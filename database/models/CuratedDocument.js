@@ -1,38 +1,39 @@
 const mongoose = require('mongoose');
 
-// Création du schéma pour la zone Curated (Données structurées et validées)
 const curatedDocumentSchema = new mongoose.Schema({
   cleanDocumentId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'CleanDocument', 
     required: true 
-    // Lien vers le texte brut de la zone Clean
-  },
-  documentCategory: { 
-    type: String, 
-    enum: ['FACTURE', 'ATTESTATION_VIGILANCE', 'AUTRE'], 
-    required: true 
-    // Classification automatique du document
   },
   
-  // Les informations métiers clés extraites par l'IA
-  extractedData: {
-    siret: { type: String },
-    tva: { type: String },
-    dateDocument: { type: Date },
-    montantTotal: { type: Number }
+  vendorId: { 
+    type: String, 
+    required: true 
   },
 
-  // La section dédiée à la détection d'anomalies
+  documentType: { 
+    type: String, 
+    enum: ['quote', 'invoice', 'urssaf', 'kbis', 'rib'], 
+    required: true 
+  },
+  
+  // Utilisation de Mixed pour accepter les différentes structures (Devis vs URSSAF vs RIB)
+  // L'IA insérera ici soit les champs du Quote, soit ceux du Kbis, etc.
+  extractedData: { 
+    type: mongoose.Schema.Types.Mixed 
+  },
+
+  // La section pour l'Anomaly Detector
   validation: {
     isValid: { 
       type: Boolean, 
       default: false 
-      // Passe à true si aucune anomalie n'est détectée
     },
+    // Préparation pour les scénarios d'erreurs de l'équipe
     anomaliesDetected: [{ 
       type: String 
-      // Stocke les erreurs du type : "SIRET différent", "TVA incohérente", "Date expirée"
+      // Exemples prévus par l'équipe : "Expired URSSAF", "SIRET mismatch", "Price mismatch", "RIB mismatch"
     }]
   }
 }, { 
