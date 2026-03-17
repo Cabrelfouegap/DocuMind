@@ -6,34 +6,38 @@ const curatedDocumentSchema = new mongoose.Schema({
     ref: 'CleanDocument', 
     required: true 
   },
-  
   vendorId: { 
     type: String, 
     required: true 
   },
-
   documentType: { 
     type: String, 
     enum: ['quote', 'invoice', 'urssaf', 'kbis', 'rib'], 
     required: true 
   },
-  
-  // Utilisation de Mixed pour accepter les différentes structures (Devis vs URSSAF vs RIB)
-  // L'IA insérera ici soit les champs du Quote, soit ceux du Kbis, etc.
   extractedData: { 
     type: mongoose.Schema.Types.Mixed 
   },
 
-  // La section pour l'Anomaly Detector
+  // Le bloc validation enrichi suite à la demande de l'équipe IA
   validation: {
-    isValid: { 
-      type: Boolean, 
-      default: false 
-    },
-    // Préparation pour les scénarios d'erreurs de l'équipe
+    isValid: { type: Boolean, default: false },
+    ruleScoreRaw: { type: Number },
+    ruleScoreNormalized: { type: Number },
+    finalScore: { type: Number },
+    status: { type: String }, 
+    decision: { type: String }, 
+    anomalyCount: { type: Number, default: 0 },
+    lastCheckedAt: { type: Date },
+    engineVersion: { type: String },
+    
+    // Modification : Tableau d'objets structurés au lieu de simples chaînes
     anomaliesDetected: [{ 
-      type: String 
-      // Exemples prévus par l'équipe : "Expired URSSAF", "SIRET mismatch", "Price mismatch", "RIB mismatch"
+      anomalyCode: { type: String },
+      severity: { type: String }, // Ex: 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+      score: { type: Number },
+      message: { type: String },
+      details: { type: mongoose.Schema.Types.Mixed } // Mixed permet à l'IA d'y mettre ce qu'elle veut (ex: les valeurs attendues vs trouvées)
     }]
   }
 }, { 
