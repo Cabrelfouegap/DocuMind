@@ -1,0 +1,169 @@
+networks:
+  documind-net:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  postgres-airflow-data:
+
+services:
+
+  mongodb:
+    image: mongo:7.0
+    container_name: documind-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-2026}
+      MONGO_INITDB_DATABASE: hackathon_ipssi
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - documind-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Docker/backend/Dockerfile
+    container_name: documind-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - documind-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Docker/frontend/Dockerfile
+    container_name: documind-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - documind-net
+
+  anomaly:
+    build:
+      context: .
+      dockerfile: Docker/anomaly/Dockerfile
+    container_name: documind-anomaly
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - documind-net
+
+  # ocr:
+  #   build:
+  #     context: .
+  #     dockerfile: Docker/ocr/Dockerfile
+  #   container_name: documind-ocr
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8002:8002"
+  #   environment:
+  #     MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+  #   networks:
+  #     - documind-net
+
+  postgres-airflow:
+    image: postgres:15-alpine
+    container_name: documind-postgres-airflow
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-airflow-data:/var/lib/postgresql/data
+    networks:
+      - documind-net
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Docker/airflow/Dockerfile
+    container_name: documind-airflow-webserver
+    restart: unless-stopped
+    command: webserver
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=}
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
+      BACKEND_URL: http://backend:5000
+      ANOMALY_URL: http://anomaly:8001
+      OCR_URL: http://ocr:8002
+    volumes:
+      - ./pipeline_airflow/dags:/opt/airflow/dags
+      - ./pipeline_airflow/logs:/opt/airflow/logs
+      - ./pipeline_airflow/plugins:/opt/airflow/plugins
+      - ./dataset:/opt/airflow/dataset
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - documind-net
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Docker/airflow/Dockerfile
+    container_name: documind-airflow-scheduler
+    restart: unless-stopped
+    command: scheduler
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=}
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
+      BACKEND_URL: http://backend:5000
+      ANOMALY_URL: http://anomaly:8001
+      OCR_URL: http://ocr:8002
+    volumes:
+      - ./pipeline_airflow/dags:/opt/airflow/dags
+      - ./pipeline_airflow/logs:/opt/airflow/logs
+      - ./pipeline_airflow/plugins:/opt/airflow/plugins
+      - ./dataset:/opt/airflow/dataset
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - documind-net

@@ -1,1 +1,36 @@
+# Environnement
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Airflow
+pipeline_airflow/logs/
+pipeline_airflow/dags/__pycache__/
+airflow.db
+airflow-webserver.pid
+
+
+dataset/
+
+# Uploads backend
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
