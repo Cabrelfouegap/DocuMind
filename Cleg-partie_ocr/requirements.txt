@@ -1,0 +1,11 @@
+# Dépendances du module OCR
+# Installer avec : pip install -r requirements.txt
+
+easyocr          # Moteur OCR principal
+PyMuPDF          # Lecture et conversion PDF → images (import fitz)
+Pillow           # Manipulation d'images
+numpy            # Tableaux numériques (requis par EasyOCR)
+spacy            # NER (extraction entités nommées)
+
+# Après installation de spacy, télécharger le modèle français :
+# python -m spacy download fr_core_news_md
