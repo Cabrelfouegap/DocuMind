@@ -1,0 +1,107 @@
+"""
+pipeline_ocr.py
+Point d'entrée principal — traite un document et retourne un JSON structuré
+"""
+
+import json
+import os
+from extraction_texte import extraire_texte
+from nettoyage import nettoyer_texte
+from entites import extraire_entites
+from evaluation import calc_taux_erreur
+from structuration import construire_json
+from structuration import construire_json, construire_payload_vendor
+
+# Dossier de sortie JSON
+
+DOSSIER_SORTIE = "resultats_ocr"
+
+
+def traiter_doc(chemin_fichier: str) -> dict:
+    """
+    Traite un document complet : OCR → nettoyage → entités → JSON
+    chemin_fichier : chemin vers image ou PDF
+    Retourne le dict JSON final
+    """
+    print(f"[OCR] Traitement de : {chemin_fichier}")
+
+    # Étape 1 — Extraction brute du texte
+
+    texte_brut = extraire_texte(chemin_fichier)
+
+    # Étape 2 — Nettoyage du texte extrait
+
+    texte_propre = nettoyer_texte(texte_brut)
+
+    # Étape 3 — extraction des entités nommées (NER)
+
+    entites = extraire_entites(texte_propre)
+
+    # Étape 4 — évaluation qualité OCR
+
+    taux_err = calc_taux_erreur(texte_propre)
+
+    # Étape 5 — structuration en JSON
+
+    resultat = construire_json(
+        chemin_fichier=chemin_fichier,
+        texte_brut=texte_brut,
+        texte_propre=texte_propre,
+        entites=entites,
+        taux_erreur=taux_err
+    )
+
+    payload_vendor = construire_payload_vendor(
+    document_json=resultat,
+    vendor_id=""
+    )
+
+    # Sauvegarde (sur disque)
+
+    os.makedirs(DOSSIER_SORTIE, exist_ok=True)
+    nom_base = os.path.splitext(os.path.basename(chemin_fichier))[0]
+    chemin_json_metier = os.path.join(DOSSIER_SORTIE, f"{nom_base}.json")
+    chemin_json_debug = os.path.join(DOSSIER_SORTIE, f"{nom_base}_debug.json")
+
+    with open(chemin_json_metier, "w", encoding="utf-8") as f:
+        json.dump(payload_vendor, f, ensure_ascii=False, indent=2)
+    
+    with open(chemin_json_debug, "w", encoding="utf-8") as f:
+        json.dump(resultat, f, ensure_ascii=False, indent=2)
+
+        return payload_vendor
+
+
+def traiter_dossier(dossier: str) -> list:
+    """
+    Traite tous les fichiers d'un dossier (images + PDFs)
+    Retourne la liste des résultats JSON
+    """
+    extensions_ok = (".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".pdf", ".webp")
+    resultats = []
+
+    for fichier in os.listdir(dossier):
+        if fichier.lower().endswith(extensions_ok):
+            chemin = os.path.join(dossier, fichier)
+            try:
+                res = traiter_doc(chemin)
+                resultats.append(res)
+            except Exception as e:
+                print(f"[ERREUR] {fichier} : {e}")
+
+    return resultats
+
+
+# Lancement direct pour test
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage : python pipeline_ocr.py <chemin_fichier_ou_dossier>")
+    else:
+        cible = sys.argv[1]
+        if os.path.isdir(cible):
+            traiter_dossier(cible)
+        else:
+            traiter_doc(cible)

@@ -1,0 +1,28 @@
+# Dossiers générés automatiquement — pas à versionner
+resultats_ocr/
+docs_test/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Environnements virtuels
+
+venv/
+.venv/
+env/
+
+# Modèles spaCy téléchargés (trop lourds pour Git)
+
+fr_core_news_md/
+fr_core_news_sm/
+
+# Fichiers système
+
+.DS_Store
+Thumbs.db
+
+# Fichiers de config locaux
+
+.env
+*.log
