@@ -15,12 +15,34 @@ Le projet suit une stratégie de stockage et de traitement en 3 zones distinctes
 -   **CRM Fournisseurs** (`/`) : Une vue métier centrée sur les fournisseurs. Elle regroupe les documents par SIRET et affiche le cumul des montants validés. C'est ici que l'on consulte la "Donnée Or".
 -   **Outil de Conformité** (`/conformity`) : Une interface haute densité destinée aux équipes de validation. Elle permet l'upload massif, l'analyse IA en un clic, et la gestion des motifs de refus ou d'incohérence.
 
-## Stack Technique
+## Configuration Technique
 
 -   **Frontend** : React.js, Tailwind CSS, Axios.
 -   **Backend** : Node.js, Express.js.
 -   **Base de données** : MongoDB (via Mongoose).
 -   **Gestion Fichiers** : Multer.
+
+### Ports par défaut
+- **Backend (Express)** : `5000`
+- **Frontend (Vite)** : `5173`
+- **Database (MongoDB)** : `27017`
+
+### Routes API (Backend)
+Toutes les routes API sont préfixées par `/api`.
+
+- `GET /api/documents` : Récupère la liste de tous les documents.
+- `POST /api/documents/upload` : Upload un ou plusieurs nouveaux documents (form-data).
+- `PATCH /api/documents/:id` : Met à jour le statut, le motif ou l'origine (IA/Manuel).
+- `POST /api/documents/:id/analyze` : Lance l'analyse OCR et la détection d'incohérences via IA.
+
+**Fichiers Statiques** :
+- `GET /uploads/:filename` : Accès direct aux fichiers sauvegardés sur le serveur.
+
+### Variables d'Environnement (Backend)
+Créez un fichier `.env` dans le dossier `backend` :
+
+- `PORT` : Le port sur lequel le serveur Express s'exécute (ex: 5000).
+- `MONGO_URI` : La chaîne de connexion MongoDB (ex: mongodb://localhost:27017/documind).
 
 ## Installation et Lancement
 
