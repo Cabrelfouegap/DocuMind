@@ -58,37 +58,26 @@ services:
     networks:
       - documind-net
 
+  ocr:
+    build:
+      context: .
+      dockerfile: Docker/ocr/Dockerfile
+    container_name: documind-ocr
+    profiles:
+      - tools
+    volumes:
+      - ./Cleg-partie_ocr:/app
+      - ./dataset:/app/dataset
+
   anomaly:
     build:
       context: .
       dockerfile: Docker/anomaly/Dockerfile
     container_name: documind-anomaly
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    environment:
-      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    networks:
-      - documind-net
-
-  # ocr:
-  #   build:
-  #     context: .
-  #     dockerfile: Docker/ocr/Dockerfile
-  #   container_name: documind-ocr
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8002:8002"
-  #   environment:
-  #     MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
-  #   networks:
-  #     - documind-net
+    profiles:
+      - tools
+    volumes:
+      - ./anomaly:/app
 
   postgres-airflow:
     image: postgres:15-alpine
@@ -124,13 +113,13 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=}
       MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
       BACKEND_URL: http://backend:5000
-      ANOMALY_URL: http://anomaly:8001
-      OCR_URL: http://ocr:8002
     volumes:
       - ./pipeline_airflow/dags:/opt/airflow/dags
       - ./pipeline_airflow/logs:/opt/airflow/logs
       - ./pipeline_airflow/plugins:/opt/airflow/plugins
       - ./dataset:/opt/airflow/dataset
+      - ./Cleg-partie_ocr:/opt/airflow/ocr
+      - ./anomaly:/opt/airflow/anomaly
     depends_on:
       postgres-airflow:
         condition: service_healthy
@@ -153,13 +142,13 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=}
       MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-2026}@mongodb:27017/hackathon_ipssi?authSource=admin
       BACKEND_URL: http://backend:5000
-      ANOMALY_URL: http://anomaly:8001
-      OCR_URL: http://ocr:8002
     volumes:
       - ./pipeline_airflow/dags:/opt/airflow/dags
       - ./pipeline_airflow/logs:/opt/airflow/logs
       - ./pipeline_airflow/plugins:/opt/airflow/plugins
       - ./dataset:/opt/airflow/dataset
+      - ./Cleg-partie_ocr:/opt/airflow/ocr
+      - ./anomaly:/opt/airflow/anomaly
     depends_on:
       postgres-airflow:
         condition: service_healthy
