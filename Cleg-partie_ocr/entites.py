@@ -26,7 +26,9 @@ def get_nlp():
 
 
 PATTERNS_REGEX = {
-    "siret": r"\b\d{14}\b",
+    # SIRET peut contenir des espaces dans les PDF ("075 402 164 00794")
+    # On tolère donc les espaces et on normalisera ensuite.
+    "siret": r"\b(?:\d[\s ]*){14}\b",
     "siren": r"\b\d{9}\b",
     "tva_intra": r"\bFR\s*\d{2}\s*\d{9}\b",
     "montant": r"\b\d[\d\s]*[,.]\d{2}\s*(?:€|EUR|euros?)",
@@ -85,6 +87,10 @@ def extraire_regex(texte: str) -> dict:
 
         if nom == "iban":
             trouvailles = [_normaliser_iban(v) for v in trouvailles]
+        elif nom == "siret":
+            # Normalise les SIRET (suppression des espaces / séparateurs)
+            trouvailles = [_normaliser_siret(v) for v in trouvailles]
+            trouvailles = [v for v in trouvailles if v]
         else:
             trouvailles = [v.strip() for v in trouvailles]
 
@@ -345,7 +351,13 @@ def extraire_champs_metier(texte: str, type_document: str, entites_regex: dict, 
         }
 
     elif type_document == "rib":
+        # Pour un RIB, on rattache aussi l'entreprise au vendor
+        # en utilisant le nom de société déjà détecté ou, à défaut,
+        # le titulaire du compte comme company_name.
+        titulaire = _extraire_titulaires(entites_ner, texte)
         champs = {
+            "company_name": company_name or titulaire,
+            "siret": siret,
             "bank_name": _extraire_bank_name(entites_ner, texte),
             "iban": _extraire_valeur_apres_label(texte, ["IBAN"]) or _premier_ou_vide(entites_regex.get("iban", [])),
             "bic": _extraire_valeur_apres_label(texte, ["BIC"]) or _premier_ou_vide(entites_regex.get("bic", [])),

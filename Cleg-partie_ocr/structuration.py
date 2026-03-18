@@ -183,6 +183,7 @@ def construire_json(
 
     resultat = {
         "document_id": hash_md5,
+        # vendor_id sera recalculé plus bas à partir du SIRET / nom si possible
         "vendor_id": "",
         "file_name": nom_fichier,
         "document_type": type_document,
@@ -298,11 +299,30 @@ def construire_payload_vendor(document_json: dict, vendor_id: str = "") -> dict:
 
     elif type_document == "rib":
         document_sortie.update({
+            "company_name": document_json.get("company_name", ""),
+            "siret": document_json.get("siret", ""),
             "bank_name": document_json.get("bank_name", ""),
             "iban": document_json.get("iban", ""),
             "bic": document_json.get("bic", ""),
             "account_holder": document_json.get("account_holder", ""),
         })
+
+    # Si aucun vendor_id explicite n'est fourni, on réutilise la logique de construire_json :
+    # priorité au SIRET (champs métier puis regex) puis au nom de l'entreprise, sinon le document_id.
+    if not vendor_id:
+        siret = str(document_json.get("siret", "")).strip()
+        company_name = str(document_json.get("company_name", "")).strip()
+        if not siret:
+            champs_admin = document_json.get("champs_admin", {})
+            sirets_admin = champs_admin.get("siret", []) if isinstance(champs_admin, dict) else []
+            if sirets_admin:
+                siret = str(sirets_admin[0]).strip()
+        if siret:
+            vendor_id = siret
+        elif company_name:
+            vendor_id = company_name
+        else:
+            vendor_id = document_json.get("document_id", "")
 
     return {
         "vendor_id": vendor_id,

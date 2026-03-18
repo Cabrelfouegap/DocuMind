@@ -52,6 +52,24 @@ def valider_et_stocker(**context):
         documents_list = payload.get("documents", [])
         doc_data = documents_list[0] if documents_list else {}
 
+        # Clé de regroupement fournisseur :
+        # 1. SIRET si présent
+        # 2. Sinon company_name
+        # 3. Sinon vendor_id fourni
+        # 4. Sinon cleanDocumentId (clé unique de secours)
+        siret = str(doc_data.get("siret", "") or "").strip()
+        company = str(doc_data.get("company_name", "") or "").strip()
+        raw_vendor = str(payload.get("vendor_id", "") or "").strip()
+
+        if siret:
+            vendor_key = siret
+        elif company:
+            vendor_key = company
+        elif raw_vendor:
+            vendor_key = raw_vendor
+        else:
+            vendor_key = str(doc.get("_id"))
+
         doc_data["_clean_doc_id"] = str(doc["_id"])
         doc_data["_raw_doc_id"]   = str(doc["rawDocumentId"])
         vendors[vendor_id].append(doc_data)
@@ -105,14 +123,15 @@ def valider_et_stocker(**context):
                 db["curateddocuments"].insert_one(curated_doc)
                 print(f"[VALIDATION] {vendor_id}/{doc_type} → curated | isValid={validation.get('isValid')} | score={validation.get('finalScore')}")
 
-                remplir_frontends(raw_doc_id, curated_doc)
+                remplir_frontends(raw_doc_id, curated_doc, canon_siret, canon_company)
 
         except Exception as e:
             print(f"[VALIDATION] ERREUR vendor {vendor_id} : {e}")
 
     client.close()
 
-def remplir_frontends(raw_doc_id, curated_doc):
+
+def remplir_frontends(raw_doc_id, curated_doc, default_siret="", default_company_name=""):
     try:
         is_valid = curated_doc["validation"]["isValid"]
         anomalies = curated_doc["validation"].get("anomaliesDetected", [])
