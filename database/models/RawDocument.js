@@ -1,5 +1,4 @@
-const mongoose = require('mongoose');
-
+const mongoose = require('../../backend/node_modules/mongoose');
 // Création du schéma pour la zone Raw (Données brutes en Ingestion)
 const rawDocumentSchema = new mongoose.Schema({
   originalFileName: { 

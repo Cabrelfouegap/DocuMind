@@ -1,140 +1,153 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const upload = require('../config/multer');
-const Document = require('../models/Document');
+const RawDocument = require('../../database/models/RawDocument');
+const uploadToDataLake = require('../middlewares/uploadInstance').get();
+const { GridFSBucket } = require('mongodb');
+const mongoose = require('mongoose');
 
 
-router.post('/upload', upload.array('files'), async (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ 
-      message: 'Aucun fichier fourni' 
-    });
-  }
-
-  const resultats = [];
-  
-  for (let i = 0; i < req.files.length; i++) {
-    const file = req.files[i];
-    const newDoc = await Document.create({
-      filename: file.filename,
-      originalName: file.originalname,
-      path: file.path,
-      mimetype: file.mimetype,
-    });
-    resultats.push(newDoc);
-  }
-
-  res.status(201).json(resultats);
-});
-
-
-router.get('/', async (req, res) => {
-  const documents = await Document.find().sort({ createdAt: -1 });
-  res.json(documents);
-});
-
-
-router.patch('/:id', async (req, res) => {
-  const id = req.params.id;
-  const status = req.body.status;
-  const reason = req.body.reason;
-  const aiGenerated = req.body.aiGenerated;
-
-  const docModifie = await Document.findByIdAndUpdate(
-    id,
-    { 
-      status: status, 
-      reason: reason || '', 
-      aiGenerated: aiGenerated ?? false 
-    },
-    { 
-      new: true, 
-      runValidators: true 
+// POST /upload
+router.post('/upload', uploadToDataLake.array('files'), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "Aucun fichier n'a été reçu." });
     }
-  );
 
-  if (!docModifie) {
-    return res.status(404).json({ 
-      message: 'Document introuvable' 
+    const resultats = [];
+
+    for (const file of req.files) {
+      const newRawDocument = new RawDocument({
+        originalFileName: file.originalname,
+        storedFilePath: file.filename,
+        mimeType: file.mimetype,
+        processingStatus: 'PENDING'
+      });
+
+      const savedDoc = await newRawDocument.save();
+      resultats.push(savedDoc);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Documents stockés avec succès dans le Data Lake',
+      data: resultats
+    });
+
+  } catch (error) {
+    console.error("Erreur lors de l'upload :", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur interne du serveur lors de la sauvegarde"
     });
   }
-
-  res.json(docModifie);
 });
 
 
+// GET /
+router.get('/', async (req, res) => {
+  try {
+    const documents = await RawDocument.find().sort({ createdAt: -1 });
+    res.json(documents);
+  } catch (error) {
+    console.error('Erreur lors de la récupération :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+
+// PATCH /:id
+router.patch('/:id', async (req, res) => {
+  try {
+    const { processingStatus } = req.body;
+
+    const docModifie = await RawDocument.findByIdAndUpdate(
+      req.params.id,
+      { processingStatus },
+      { new: true, runValidators: true }
+    );
+
+    if (!docModifie) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document introuvable'
+      });
+    }
+
+    res.json(docModifie);
+
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+
+// POST /:id/analyze
 router.post('/:id/analyze', async (req, res) => {
-  const idDocument = req.params.id;
+  try {
+    const document = await RawDocument.findById(req.params.id);
 
-  const document = await Document.findById(idDocument);
-  
-  if (!document) {
-    return res.status(404).json({ 
-      message: 'Document introuvable' 
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document introuvable'
+      });
+    }
+
+    const nomFichier = document.originalFileName.toLowerCase();
+    const estImage = ['image/png', 'image/jpeg'].includes(document.mimeType);
+    const estWord = [
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ].includes(document.mimeType);
+
+    let typeSuggere = 'Autre';
+    if (nomFichier.includes('facture'))         typeSuggere = 'Facture';
+    else if (nomFichier.includes('invoice'))    typeSuggere = 'Facture';
+    else if (nomFichier.includes('devis'))      typeSuggere = 'Devis';
+    else if (nomFichier.includes('quote'))      typeSuggere = 'Devis';
+    else if (nomFichier.includes('contrat'))    typeSuggere = 'Contrat';
+    else if (nomFichier.includes('kbis'))       typeSuggere = 'Kbis';
+    else if (nomFichier.includes('urssaf'))     typeSuggere = 'Urssaf';
+    else if (nomFichier.includes('rib'))        typeSuggere = 'RIB';
+    else if (estImage)                          typeSuggere = 'Identité';
+
+    let nouveauStatut = 'PROCESSING';
+    if (estWord) nouveauStatut = 'FAILED';
+
+    const docFinal = await RawDocument.findByIdAndUpdate(
+      req.params.id,
+      { processingStatus: nouveauStatut },
+      { new: true }
+    );
+
+    res.json({ ...docFinal.toObject(), typeSuggere });
+
+  } catch (error) {
+    console.error("Erreur lors de l'analyse :", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur interne du serveur lors de l'analyse"
     });
   }
-
-  const estImage = (document.mimetype === 'image/png' || document.mimetype === 'image/jpeg');
-  const estWord = (document.mimetype === 'application/msword' || document.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-
-  let statutSuggere = 'Conforme';
-  let motifSuggere = '';
-  let typeSuggere = 'Autre';
-
-  const nomFichier = document.originalName.toLowerCase();
-
-  if (nomFichier.includes('facture')) {
-    typeSuggere = 'Facture';
-  } else if (nomFichier.includes('devis')) {
-    typeSuggere = 'Devis';
-  } else if (nomFichier.includes('contrat')) {
-    typeSuggere = 'Contrat';
-  } else if (estImage) {
-    typeSuggere = 'Identité';
-  }
-
-  if (estWord) {
-    statutSuggere = 'Non conforme';
-    motifSuggere = 'Signature ou données obligatoires manquantes (détecté par IA).';
-  }
-  let donneesExtraites = {
-    siret: '834 657 239 00012',
-    tvaNumber: 'FR 32 834657239',
-    amountHT: 1250.50,
-    amountTTC: 1500.60,
-    emissionDate: '2024-03-01',
-    expirationDate: '',
-    inconsistencyNote: ''
-  };
-
-  if (typeSuggere === 'Identité') {
-    donneesExtraites.siret = '';
-    donneesExtraites.tvaNumber = '';
-    donneesExtraites.amountHT = 0;
-    donneesExtraites.amountTTC = 0;
-  }
-
-  if (typeSuggere === 'Facture' && nomFichier.includes('fake')) {
-    donneesExtraites.siret = '999 999 999 00099';
-    donneesExtraites.inconsistencyNote = 'ALERTE : Numéro SIRET inconnu ou incohérent avec la base fournisseur.';
-    statutSuggere = 'Non conforme';
-    motifSuggere = 'Incohérence critique de données (SIRET).';
-  }
-
-  const docFinal = await Document.findByIdAndUpdate(
-    idDocument,
-    { 
-      status: statutSuggere, 
-      reason: motifSuggere, 
-      aiGenerated: true,
-      type: typeSuggere,
-      extractedData: donneesExtraites
-    },
-    { new: true }
-  );
-
-  res.json(docFinal);
 });
+
+router.get('/file/:filename', async (req, res) => {
+  try {
+    const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: 'datalake_raw' });
+    const stream = bucket.openDownloadStreamByName(req.params.filename);
+    stream.on('error', () => res.status(404).json({ message: 'Fichier introuvable' }));
+    stream.pipe(res);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 
 module.exports = router;

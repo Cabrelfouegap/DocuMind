@@ -69,30 +69,6 @@ const ConformityView = () => {
   };
 
 
-  const changerLeStatut = async (document, nouveauStatut) => {
-    let explication = '';
-    if (nouveauStatut === 'Non conforme') {
-      explication = window.prompt('Pourquoi refusez-vous ce document ?');
-      if (explication === null) explication = '';
-    }
-
-    await updateDoc(document._id, {
-      status: nouveauStatut,
-      reason: explication,
-      aiGenerated: false
-    });
-
-
-    const nouvelleListe = listeDocs.map((item) => {
-      if (item._id === document._id) {
-        return { ...item, status: nouveauStatut, reason: explication, aiGenerated: false };
-      }
-      return item;
-    });
-    setListeDocs(nouvelleListe);
-  };
-
-
   const lancerIA = async (document) => {
     const idsCopiés = [...idsEnCoursDAnalyse, document._id];
     setIdsEnCoursDAnalyse(idsCopiés);
@@ -118,26 +94,28 @@ const ConformityView = () => {
   };
 
 
+  // RawDocument : processingStatus au lieu de status
   const total = listeDocs.length;
-  const attente = listeDocs.filter((d) => d.status === 'En attente').length;
-  const conforme = listeDocs.filter((d) => d.status === 'Conforme').length;
-  const nonConforme = listeDocs.filter((d) => d.status === 'Non conforme').length;
+  const attente = listeDocs.filter((d) => d.processingStatus === 'PENDING').length;
+  const processing = listeDocs.filter((d) => d.processingStatus === 'PROCESSING').length;
+  const completed = listeDocs.filter((d) => d.processingStatus === 'OCR_COMPLETED').length;
+  const failed = listeDocs.filter((d) => d.processingStatus === 'FAILED').length;
 
   const lesComptages = {
-    total: total,
-    'En attente': attente,
-    Conforme: conforme,
-    'Non conforme': nonConforme
+    total,
+    'PENDING': attente,
+    'PROCESSING': processing,
+    'OCR_COMPLETED': completed,
+    'FAILED': failed
   };
 
 
   const documentsAffiches = listeDocs.filter((doc) => {
-    let okStatus = (ongletActif === 'Tous' || doc.status === ongletActif);
-
+    const okStatus = (ongletActif === 'Tous' || doc.processingStatus === ongletActif);
     const s = texteRecherche.toLowerCase();
-    const n = doc.originalName.toLowerCase();
+    // RawDocument utilise originalFileName
+    const n = (doc.originalFileName || '').toLowerCase();
     const okRecherche = n.includes(s);
-
     return okStatus && okRecherche;
   });
 
@@ -172,8 +150,8 @@ const ConformityView = () => {
           <div className="col-span-12 lg:col-span-7 grid grid-cols-4 gap-3">
             <StatCard label="Total" value={total} accent="text-slate-800" />
             <StatCard label="En attente" value={attente} accent="text-amber-600" />
-            <StatCard label="Conformes" value={conforme} accent="text-emerald-600" />
-            <StatCard label="Refusés" value={nonConforme} accent="text-red-600" />
+            <StatCard label="En cours" value={processing} accent="text-blue-600" />
+            <StatCard label="Terminés" value={completed} accent="text-emerald-600" />
           </div>
 
           <div
@@ -230,14 +208,14 @@ const ConformityView = () => {
               <table className="w-full text-[11px] text-left table-fixed">
                 <thead className="bg-slate-50 text-slate-500 uppercase text-[9px] tracking-wide">
                   <tr>
-                    <th className="px-4 py-2 w-[22%]">Fichier</th>
-                    <th className="px-4 py-2 w-[10%]">Type</th>
+                    <th className="px-4 py-2 w-[25%]">Fichier</th>
+                    <th className="px-4 py-2 w-[12%]">Type</th>
                     <th className="px-4 py-2 w-[10%] text-center">Date</th>
-                    <th className="px-4 py-2 w-[12%] text-center">Statut</th>
+                    <th className="px-4 py-2 w-[15%] text-center">Statut</th>
                     <th className="px-4 py-2 w-[15%] text-right">Données Extraites</th>
-                    <th className="px-4 py-2 w-[15%]">Détails/Motif</th>
+                    <th className="px-4 py-2 w-[15%] text-center">Détail/Motif</th>
                     <th className="px-4 py-2 w-[6%] text-center">Aperçu</th>
-                    <th className="px-4 py-2 w-[15%] text-right">Décision</th>
+                    <th className="px-4 py-2 w-[17%] text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -246,30 +224,47 @@ const ConformityView = () => {
 
                     return (
                       <tr key={doc._id} className="hover:bg-slate-50 transition-colors">
+
+                        {/* Nom du fichier — RawDocument: originalFileName */}
                         <td className="px-4 py-1.5 font-medium text-slate-800 truncate">
-                          {doc.originalName}
+                          {doc.originalFileName || '—'}
                         </td>
+
+                        {/* Type — sera rempli par OCR via typeSuggere */}
                         <td className="px-4 py-1.5 text-slate-500 truncate">
-                          {doc.type || '—'}
+                          {doc.typeSuggere || '—'}
                         </td>
+
+                        {/* Date */}
                         <td className="px-4 py-1.5 text-slate-500 text-center">
                           {new Date(doc.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
                         </td>
+
+                        {/* Statut OCR — processingStatus */}
                         <td className="px-4 py-1.5 text-center">
-                          <StatusBadge status={doc.status} />
+                          <span className={
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full ' +
+                            (doc.processingStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                            doc.processingStatus === 'PROCESSING' ? 'bg-blue-100 text-blue-700' :
+                            doc.processingStatus === 'OCR_COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-red-100 text-red-700')
+                          }>
+                            {doc.processingStatus}
+                          </span>
                         </td>
-                        <td className="px-4 py-1.5 text-right font-medium text-slate-700">
-                          {doc.extractedData?.amountTTC ? `${doc.extractedData.amountTTC}€` : (doc.extractedData?.expirationDate ? `Exp: ${doc.extractedData.expirationDate}` : '—')}
+
+                        {/* Données extraites — viendront de CleanDocument via OCR */}
+                        <td className="px-4 py-1.5 text-right font-medium text-slate-400 text-[10px]">
+                          {doc.processingStatus === 'OCR_COMPLETED' ? 'Disponibles' : '—'}
                         </td>
-                        <td
-                          className="px-4 py-1.5 text-slate-500 truncate text-[10px] cursor-help"
-                          title={doc.reason || doc.extractedData?.inconsistencyNote || ''}
-                        >
-                          {doc.reason ? doc.reason : (doc.extractedData?.inconsistencyNote ? '⚠️ Incohérence' : '—')}
+                        {/* Détails/Motifs (WIP) */}
+                        <td className="px-4 py-1.5 text-right font-medium text-slate-400 text-[10px]">
+                          {}
                         </td>
+                        {/* Aperçu */}
                         <td className="px-4 py-1.5 text-center">
                           <a
-                            href={'/uploads/' + doc.filename}
+                            href={'/api/documents/file/' + doc.storedFilePath}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center justify-center p-1 rounded-md bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
@@ -280,9 +275,11 @@ const ConformityView = () => {
                             </svg>
                           </a>
                         </td>
+
+                        {/* Action */}
                         <td className="px-4 py-1.5">
                           <div className="flex items-center justify-end gap-1.5">
-                            {doc.status === 'En attente' ? (
+                            {doc.processingStatus === 'PENDING' && (
                               <button
                                 onClick={() => lancerIA(doc)}
                                 disabled={estEnCoursDAnalyse}
@@ -290,24 +287,19 @@ const ConformityView = () => {
                               >
                                 {estEnCoursDAnalyse ? '...' : 'IA'}
                               </button>
-                            ) : (
-                              <div className="flex items-center justify-end gap-1.5">
-                                {doc.aiGenerated && (
-                                  <div className="w-1.5 h-1.5 rounded-full bg-violet-400" title="Suggestion IA"></div>
-                                )}
-                                <select
-                                  value={doc.status}
-                                  onChange={(e) => changerLeStatut(doc, e.target.value)}
-                                  className="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white text-slate-700 cursor-pointer"
-                                >
-                                  <option value="Conforme">OK</option>
-                                  <option value="Non conforme">Refus</option>
-                                  <option value="En attente">?</option>
-                                </select>
-                              </div>
+                            )}
+                            {doc.processingStatus === 'PROCESSING' && (
+                              <span className="text-[10px] text-blue-500">En cours...</span>
+                            )}
+                            {doc.processingStatus === 'OCR_COMPLETED' && (
+                              <span className="text-[10px] text-emerald-600 font-semibold">✓ Traité</span>
+                            )}
+                            {doc.processingStatus === 'FAILED' && (
+                              <span className="text-[10px] text-red-500">✗ Échec</span>
                             )}
                           </div>
                         </td>
+
                       </tr>
                     );
                   })}
