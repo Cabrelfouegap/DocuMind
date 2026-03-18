@@ -45,7 +45,7 @@ Le module prend en entrée des documents structurés (zone Curated) regroupés p
 ```
 ---
 
-#  Otput
+#  Output
 ```json
 {
   "vendorId": "vendor_01",
@@ -116,4 +116,4 @@ Score normalisé	Statut	Décision
 
 # Exécution
  Lancer le test
-python test_detector.py
+python run.py

@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V14",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Weber Bonnet",
+      "siret": "78988914400349",
+      "invoice_number": "INV-5377",
+      "product_description": "Decorative Cushion",
+      "amount_ht": "4412.32 €",
+      "vat_rate": "20%",
+      "total_ttc": "5294.78 €",
+      "invoice_issue_date": "2026-02-25"
+    }
+  ]
+}

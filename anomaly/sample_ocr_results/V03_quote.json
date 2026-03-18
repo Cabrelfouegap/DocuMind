@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V03",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 0.3875,
+      "company_name": "Boroi 6 Dualo",
+      "siret": "",
+      "quote_number": "",
+      "product_description": "",
+      "amount_ht": "",
+      "vat_rate": "",
+      "total_ttc": "",
+      "quote_issue_date": "",
+      "quote_validity_date": ""
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V18",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Clément Rivière",
+      "siret": "42589436700365",
+      "certificate_number": "URSSAF-71670",
+      "issue_date": "2026-02-12",
+      "expiration_date": "2026-03-27"
+    }
+  ]
+}

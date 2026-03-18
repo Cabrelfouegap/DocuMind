@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V13",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Dumont SAS",
+      "siret": "08381313900538",
+      "invoice_number": "INV-5791",
+      "product_description": "Floor Lamp",
+      "amount_ht": "823.31 €",
+      "vat_rate": "20%",
+      "total_ttc": "987.97 €",
+      "invoice_issue_date": "2026-02-16"
+    }
+  ]
+}

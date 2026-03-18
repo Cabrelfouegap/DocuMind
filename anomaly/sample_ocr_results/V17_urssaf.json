@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V17",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Valentin SAS",
+      "siret": "45157995700809",
+      "certificate_number": "URSSAF-32382",
+      "issue_date": "2026-01-11",
+      "expiration_date": "2026-09-01"
+    }
+  ]
+}

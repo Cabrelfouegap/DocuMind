@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V05",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Brunet Consulting",
+      "siret": "32321406400558",
+      "invoice_number": "INV-6513",
+      "product_description": "Dining Chair",
+      "amount_ht": "2310.5 €",
+      "vat_rate": "20%",
+      "total_ttc": "2772.6 €",
+      "invoice_issue_date": "2026-01-30"
+    }
+  ]
+}

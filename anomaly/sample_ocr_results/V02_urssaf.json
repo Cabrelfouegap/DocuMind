@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V02",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Maillot SARL",
+      "siret": "68677614700684",
+      "certificate_number": "URSSAF-14050",
+      "issue_date": "2026-01-16",
+      "expiration_date": "2026-08-07"
+    }
+  ]
+}

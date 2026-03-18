@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V16",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Marin SARL",
+      "siret": "34546360800777",
+      "legal_form": "SAS",
+      "creation_date": "2017-07-20",
+      "address": "751, avenue Margot Valentin 61640 Costeboeuf"
+    }
+  ]
+}

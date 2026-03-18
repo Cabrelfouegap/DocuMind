@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V03",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 0.6,
+      "company_name": "8oroi 6 Dualo",
+      "siret": "",
+      "invoice_number": "Date 2026-01 24",
+      "product_description": "Stonoe Cabina",
+      "amount_ht": "",
+      "vat_rate": "",
+      "total_ttc": "",
+      "invoice_issue_date": "2026-01 24"
+    }
+  ]
+}

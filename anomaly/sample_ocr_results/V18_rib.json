@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V18",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "BNP Paribas",
+      "iban": "FR9899500904298288370702491",
+      "bic": "YJERFRZMZAT",
+      "account_holder": "Clément Rivière"
+    }
+  ]
+}

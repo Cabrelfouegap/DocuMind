@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V07",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "LCL",
+      "iban": "FR7621250956594854363186289",
+      "bic": "VNTOFRCA",
+      "account_holder": "Richard Nicolas"
+    }
+  ]
+}

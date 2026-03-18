@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V05",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "Société Générale",
+      "iban": "FR8520973871191219173907010",
+      "bic": "BXVAFRQRIQE",
+      "account_holder": "Brunet Consulting"
+    }
+  ]
+}

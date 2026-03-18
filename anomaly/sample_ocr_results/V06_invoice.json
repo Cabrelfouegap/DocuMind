@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V06",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Potier SAS",
+      "siret": "73521701000686",
+      "invoice_number": "INV-6742",
+      "product_description": "Mirror",
+      "amount_ht": "4487.89 €",
+      "vat_rate": "20%",
+      "total_ttc": "5385.47 €",
+      "invoice_issue_date": "2026-01-18"
+    }
+  ]
+}

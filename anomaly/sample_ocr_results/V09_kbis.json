@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V09",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Pereira Girard",
+      "siret": "04218278200641",
+      "legal_form": "SAS",
+      "creation_date": "2025-12-28",
+      "address": "41, avenue de Martineau 23978 Sainte Antoinette"
+    }
+  ]
+}

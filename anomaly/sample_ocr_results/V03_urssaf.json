@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V03",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Benoit Diallo",
+      "siret": "93978830300658",
+      "certificate_number": "URSSAF-28427",
+      "issue_date": "2026-02-19",
+      "expiration_date": "2025-09-09"
+    }
+  ]
+}

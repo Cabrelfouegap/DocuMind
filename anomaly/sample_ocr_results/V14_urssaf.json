@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V14",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Weber Bonnet",
+      "siret": "78988914400349",
+      "certificate_number": "URSSAF-55859",
+      "issue_date": "2026-01-23",
+      "expiration_date": "2026-08-27"
+    }
+  ]
+}

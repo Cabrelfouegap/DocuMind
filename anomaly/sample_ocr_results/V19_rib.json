@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V19",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "HSBC France",
+      "iban": "FR4482632712187603520138627",
+      "bic": "AHFKFRUJABG",
+      "account_holder": "Lemoine Consulting"
+    }
+  ]
+}

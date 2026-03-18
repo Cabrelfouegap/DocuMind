@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V13",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 1.0,
+      "company_name": "Dumont SAS",
+      "siret": "08381313900538",
+      "quote_number": "Q-2217",
+      "product_description": "Desk Organizer",
+      "amount_ht": "2097.69 €",
+      "vat_rate": "20%",
+      "total_ttc": "2517.23 €",
+      "quote_issue_date": "2026-02-02",
+      "quote_validity_date": "2026-03-14"
+    }
+  ]
+}
