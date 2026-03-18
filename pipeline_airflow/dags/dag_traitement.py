@@ -31,40 +31,58 @@ def traiter_documents_ocr(**context):
     clean_ids = []
 
     for doc in documents:
-        raw_id = doc["_id"]
+        raw_id    = doc["_id"]
         file_name = doc["originalFileName"]
         stored_path = doc["storedFilePath"]
+
+        # vendorId doit être stocké dans rawdocuments par Nassim/Hyndi
+        # Fallback sur l'_id si absent — à corriger côté backend
+        vendor_id = doc.get("vendorId", str(raw_id))
 
         try:
             grid_file = fs.find_one({"filename": stored_path})
 
             if not grid_file:
-                print(f"[TRAITEMENT] Fichier GridFS introuvable pour {file_name}")
+                print(f"[TRAITEMENT] Fichier GridFS introuvable : {file_name}")
                 db["rawdocuments"].update_one(
                     {"_id": raw_id},
                     {"$set": {"processingStatus": "FAILED"}}
                 )
                 continue
 
-            ext = os.path.splitext(file_name)[-1]
-            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-                tmp.write(grid_file.read())
-                tmp_path = tmp.name
+            # Créer /tmp/<random>/<vendor_id>/filename
+            # Cleg lit vendor_id via os.path.basename(os.path.dirname(chemin))
+            tmp_dir    = tempfile.mkdtemp()
+            vendor_dir = os.path.join(tmp_dir, vendor_id)
+            os.makedirs(vendor_dir, exist_ok=True)
+            tmp_path   = os.path.join(vendor_dir, file_name)
 
-            resultat_ocr = traiter_doc(tmp_path)
-            os.unlink(tmp_path)
+            with open(tmp_path, "wb") as f:
+                f.write(grid_file.read())
 
-            texte_brut = resultat_ocr.get("texte_brut", "")
-            confidence = resultat_ocr.get("ocr_confidence", 0)
+            # Appel direct au module OCR de Cleg
+            # Retourne {"vendor_id": "...", "documents": [{...}]}
+            payload_ocr = traiter_doc(tmp_path)
+
+            # Nettoyage fichier temporaire
+            os.remove(tmp_path)
+            os.rmdir(vendor_dir)
+            os.rmdir(tmp_dir)
+
+            # Extraire le texte depuis le premier document du payload
+            documents_list = payload_ocr.get("documents", [])
+            first_doc      = documents_list[0] if documents_list else {}
+            confidence     = first_doc.get("ocr_confidence", 0)
+
             if isinstance(confidence, float) and confidence <= 1:
                 confidence = round(confidence * 100, 2)
 
             clean_doc = {
                 "rawDocumentId": raw_id,
-                "extractedText": texte_brut,
+                "extractedText": str(first_doc),   # texte brut non disponible dans payload métier
                 "ocrEngineUsed": "EASYOCR",
                 "confidenceScore": confidence,
-                "ocrPayload": resultat_ocr,
+                "ocrPayload": payload_ocr,          # payload complet pour dag_validation
             }
 
             result = db["cleandocuments"].insert_one(clean_doc)
@@ -75,7 +93,7 @@ def traiter_documents_ocr(**context):
                 {"$set": {"processingStatus": "OCR_COMPLETED"}}
             )
 
-            print(f"[TRAITEMENT] OK — {file_name} → cleandocuments {result.inserted_id}")
+            print(f"[TRAITEMENT] OK — {file_name} (vendor:{vendor_id}) → cleandocuments:{result.inserted_id}")
 
         except Exception as e:
             print(f"[TRAITEMENT] ERREUR — {file_name} : {e}")
