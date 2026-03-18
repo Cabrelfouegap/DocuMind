@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V08",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Roger Industrie",
+      "siret": "11888262000297",
+      "invoice_number": "INV-3826",
+      "product_description": "Ceiling Lamp",
+      "amount_ht": "4545.97 €",
+      "vat_rate": "20%",
+      "total_ttc": "3043.12 €",
+      "invoice_issue_date": "2026-02-15"
+    }
+  ]
+}

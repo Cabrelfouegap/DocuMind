@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V10",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "HSBC France",
+      "iban": "FR3167228546404521043977643",
+      "bic": "ZUNBFRFOKWK",
+      "account_holder": "Renard Industrie"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V12",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Devaux Payet",
+      "siret": "83769665700654",
+      "invoice_number": "INV-9352",
+      "product_description": "Wooden Table",
+      "amount_ht": "4554.31 €",
+      "vat_rate": "20%",
+      "total_ttc": "5465.17 €",
+      "invoice_issue_date": "2026-01-16"
+    }
+  ]
+}

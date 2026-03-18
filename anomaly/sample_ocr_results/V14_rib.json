@@ -1,0 +1,13 @@
+{
+  "vendor_id": "V14",
+  "documents": [
+    {
+      "document_type": "rib",
+      "ocr_confidence": 1.0,
+      "bank_name": "LCL",
+      "iban": "FR2236931391804886243171676",
+      "bic": "YVSLFRF14FR",
+      "account_holder": "Weber Bonnet"
+    }
+  ]
+}

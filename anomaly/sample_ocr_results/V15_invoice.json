@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V15",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 0.4,
+      "company_name": "Value",
+      "siret": "",
+      "invoice_number": "",
+      "product_description": "",
+      "amount_ht": "",
+      "vat_rate": "",
+      "total_ttc": "",
+      "invoice_issue_date": ""
+    }
+  ]
+}

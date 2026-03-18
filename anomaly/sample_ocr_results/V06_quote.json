@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V06",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 1.0,
+      "company_name": "Potier SAS",
+      "siret": "73521701000686",
+      "quote_number": "Q-1153",
+      "product_description": "Floor Lamp",
+      "amount_ht": "2509.95 €",
+      "vat_rate": "20%",
+      "total_ttc": "3011.94 €",
+      "quote_issue_date": "2026-02-19",
+      "quote_validity_date": "2026-01-31"
+    }
+  ]
+}

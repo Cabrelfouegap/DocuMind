@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V12",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Devaux Payet",
+      "siret": "83769665700654",
+      "certificate_number": "URSSAF-17993",
+      "issue_date": "2026-03-12",
+      "expiration_date": "2026-06-22"
+    }
+  ]
+}

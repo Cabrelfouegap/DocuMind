@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V01",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 1.0,
+      "company_name": "Colin SARL",
+      "siret": "07540216400794",
+      "quote_number": "Q-9109",
+      "product_description": "Vase",
+      "amount_ht": "4849.45 €",
+      "vat_rate": "20%",
+      "total_ttc": "5819.34 €",
+      "quote_issue_date": "2026-01-02",
+      "quote_validity_date": "2026-02-01"
+    }
+  ]
+}

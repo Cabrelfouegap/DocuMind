@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V06",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Potier SAS",
+      "siret": "73521701000686",
+      "legal_form": "EURL",
+      "creation_date": "2022-12-07",
+      "address": "70, avenue Lévêque 33310 Aubert"
+    }
+  ]
+}

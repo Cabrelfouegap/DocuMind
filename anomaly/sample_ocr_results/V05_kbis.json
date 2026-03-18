@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V05",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Brunet Consulting",
+      "siret": "32321406400558",
+      "legal_form": "SARL",
+      "creation_date": "2024-10-01",
+      "address": "3, boulevard Renard 62957 Ledouxboeuf"
+    }
+  ]
+}

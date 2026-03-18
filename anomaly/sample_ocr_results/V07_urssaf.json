@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V07",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Richard Nicolas",
+      "siret": "95241765700543",
+      "certificate_number": "URSSAF-66076",
+      "issue_date": "2026-01-01",
+      "expiration_date": "2026-11-25"
+    }
+  ]
+}

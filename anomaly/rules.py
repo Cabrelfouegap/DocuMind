@@ -36,12 +36,12 @@ RULES_CONFIG: Final[dict[str, dict[str, object]]] = {
     },
     "QUOTE_INVOICE_PRICE_MISMATCH": {
         "severity": "medium",
-        "score": 20,
+        "score": 30,
         "message": "Les montants TTC du devis et de la facture ne correspondent pas.",
     },
     "VAT_INCONSISTENT": {
         "severity": "medium",
-        "score": 20,
+        "score": 30,
         "message": "Le calcul de la TVA est incohérent avec le montant total.",
     },
     "RIB_ACCOUNT_HOLDER_MISMATCH": {
@@ -51,12 +51,12 @@ RULES_CONFIG: Final[dict[str, dict[str, object]]] = {
     },
     "INVALID_IBAN_FORMAT": {
         "severity": "medium",
-        "score": 15,
+        "score": 30,
         "message": "Le format de l’IBAN est invalide.",
     },
     "MULTIPLE_HIGH_RISK_SIGNALS": {
         "severity": "high",
-        "score": 20,
+        "score": 30,
         "message": "Plusieurs anomalies critiques ont été détectées pour ce fournisseur.",
     },
 }
@@ -103,7 +103,7 @@ REQUIRED_FIELDS: Final[dict[str, list[str]]] = {
         "iban",
         "bic",
         "account_holder",
-        "company_name",
+        
     ],
 }
 
