@@ -20,9 +20,6 @@ pipeline_airflow/dags/__pycache__/
 airflow.db
 airflow-webserver.pid
 
-
-dataset/
-
 # Uploads backend
 backend/uploads/
 
