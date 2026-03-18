@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V17",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Valentin SAS",
+      "siret": "45157995700809",
+      "legal_form": "EURL",
+      "creation_date": "2024-02-09",
+      "address": "712, rue de Louis 44993 Huet"
+    }
+  ]
+}

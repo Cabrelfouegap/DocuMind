@@ -1,5 +1,4 @@
 import os
-import sys
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -22,26 +21,23 @@ def scanner_documents_pending(**context):
         return []
 
     ids = [str(doc["_id"]) for doc in documents]
-    print(f"[INGESTION] {len(ids)} document(s) PENDING trouvé(s) : {ids}")
-
+    print(f"[INGESTION] {len(ids)} document(s) PENDING : {ids}")
     context["ti"].xcom_push(key="raw_document_ids", value=ids)
     return ids
 
 def marquer_en_processing(**context):
     ids = context["ti"].xcom_pull(task_ids="scanner_documents_pending", key="raw_document_ids")
-
     if not ids:
         return
 
     client = MongoClient(MONGO_URI)
     db = client["hackathon_ipssi"]
-
     db["rawdocuments"].update_many(
-        {"_id": {"$in": [ObjectId(id) for id in ids]}},
+        {"_id": {"$in": [ObjectId(i) for i in ids]}},
         {"$set": {"processingStatus": "PROCESSING"}}
     )
     client.close()
-    print(f"[INGESTION] {len(ids)} document(s) passé(s) à PROCESSING")
+    print(f"[INGESTION] {len(ids)} document(s) → PROCESSING")
 
 with DAG(
     dag_id="dag_ingestion",

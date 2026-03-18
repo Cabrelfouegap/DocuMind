@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V09",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Pereira Girard",
+      "siret": "04218278200641",
+      "certificate_number": "URSSAF-27678",
+      "issue_date": "2026-02-15",
+      "expiration_date": "2025-09-12"
+    }
+  ]
+}

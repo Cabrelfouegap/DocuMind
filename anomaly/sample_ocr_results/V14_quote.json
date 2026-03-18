@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V14",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 1.0,
+      "company_name": "Weber Bonnet",
+      "siret": "78988914400349",
+      "quote_number": "Q-9707",
+      "product_description": "Wall Painting",
+      "amount_ht": "719.61 €",
+      "vat_rate": "20%",
+      "total_ttc": "863.53 €",
+      "quote_issue_date": "2026-01-31",
+      "quote_validity_date": "2026-03-09"
+    }
+  ]
+}

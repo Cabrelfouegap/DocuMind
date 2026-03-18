@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from adapter import ensure_detector_input_format
 from detector import compute_rule_score, detect_rule_based_anomalies
 from rules import STATUS_THRESHOLDS
 
@@ -64,9 +65,22 @@ def build_validation_payload(
 class RuleBasedAnomalyDetector:
     ENGINE_VERSION = DEFAULT_ENGINE_VERSION
 
-    def detect(self, vendor_data: dict[str, Any]) -> dict[str, Any]:
-        vendor_id = vendor_data.get("vendorId") or vendor_data.get("vendor_id")
-        anomalies = detect_rule_based_anomalies(vendor_data)
+    def detect(
+        self,
+        vendor_data: dict[str, Any],
+        source_name: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_vendor_data = ensure_detector_input_format(
+            vendor_data,
+            source_name=source_name,
+        )
+
+        vendor_id = (
+            normalized_vendor_data.get("vendorId")
+            or normalized_vendor_data.get("vendor_id")
+        )
+
+        anomalies = detect_rule_based_anomalies(normalized_vendor_data)
 
         return {
             "vendorId": vendor_id,

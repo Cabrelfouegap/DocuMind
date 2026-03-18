@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V01",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Colin SARL",
+      "siret": "07540216400794",
+      "certificate_number": "URSSAF-14216",
+      "issue_date": "2026-02-27",
+      "expiration_date": "2027-02-26"
+    }
+  ]
+}

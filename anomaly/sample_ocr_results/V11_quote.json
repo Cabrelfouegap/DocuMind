@@ -1,0 +1,18 @@
+{
+  "vendor_id": "V11",
+  "documents": [
+    {
+      "document_type": "quote",
+      "ocr_confidence": 1.0,
+      "company_name": "Colin Le Roux",
+      "siret": "77414742500177",
+      "quote_number": "Q-7168",
+      "product_description": "Sideboard",
+      "amount_ht": "731.46 €",
+      "vat_rate": "20%",
+      "total_ttc": "877.75 €",
+      "quote_issue_date": "2026-02-24",
+      "quote_validity_date": "2026-02-11"
+    }
+  ]
+}

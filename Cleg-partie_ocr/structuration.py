@@ -74,7 +74,8 @@ def _base_champs_par_type(type_document: str) -> dict:
 
 def _extraire_confiance_ocr(taux_erreur: dict = None):
     """
-    Retourne un score OCR simple exploitable par les modules aval
+    Retourne un score OCR simple exploitable par les modules aval.
+    Peut être en pourcentage (0..100) ou vide.
     """
     if not taux_erreur:
         return ""
@@ -88,17 +89,17 @@ def _extraire_confiance_ocr(taux_erreur: dict = None):
     return ""
 
 
-def _normaliser_score_confiance(ocr_confidence):
+def _score_base_normalise(ocr_confidence):
     """
-    Normalise le score OCR entre 0 et 1 si besoin
+    Normalise un score OCR en 0..1
     """
     if ocr_confidence in ("", None):
-        return ""
+        return 0.0
 
     try:
         score = float(ocr_confidence)
     except (TypeError, ValueError):
-        return ""
+        return 0.0
 
     if 0 <= score <= 1:
         return round(score, 4)
@@ -106,7 +107,53 @@ def _normaliser_score_confiance(ocr_confidence):
     if 0 <= score <= 100:
         return round(score / 100, 4)
 
-    return ""
+    return 0.0
+
+
+def _ajuster_confiance_selon_champs(document_json: dict, score_base: float) -> float:
+    """
+    Baisse la confiance si des champs critiques sont absents.
+    """
+    type_document = document_json.get("document_type", "unknown")
+
+    champs_critiques = {
+        "invoice": [
+            "company_name", "siret", "invoice_number",
+            "amount_ht", "vat_rate", "total_ttc", "invoice_issue_date"
+        ],
+        "quote": [
+            "company_name", "siret", "quote_number",
+            "amount_ht", "vat_rate", "total_ttc",
+            "quote_issue_date", "quote_validity_date"
+        ],
+        "urssaf": [
+            "company_name", "siret", "certificate_number",
+            "issue_date", "expiration_date"
+        ],
+        "kbis": [
+            "company_name", "siret", "legal_form",
+            "creation_date", "address"
+        ],
+        "rib": [
+            "bank_name", "iban", "bic", "account_holder"
+        ],
+    }
+
+    champs = champs_critiques.get(type_document, [])
+    if not champs:
+        # document inconnu ou non géré
+        return round(max(0.0, min(1.0, score_base - 0.4)), 4)
+
+    nb_manquants = sum(1 for champ in champs if not document_json.get(champ, ""))
+    ratio_manquants = nb_manquants / len(champs)
+
+    # pénalité progressive : jusqu'à -0.7 si tout est vide
+    score_final = score_base - (ratio_manquants * 0.7)
+
+    if type_document == "unknown":
+        score_final -= 0.2
+
+    return round(max(0.0, min(1.0, score_final)), 4)
 
 
 def construire_json(
@@ -147,7 +194,7 @@ def construire_json(
     base_champs.update(champs_metier)
     resultat.update(base_champs)
 
-    # On conserve aussi les informations techniques utiles pour debug / traçabilité
+    # Informations techniques utiles pour debug / traçabilité
     resultat["meta"] = {
         "nom_fichier": nom_fichier,
         "extension": ext,
@@ -198,11 +245,12 @@ def construire_payload_vendor(document_json: dict, vendor_id: str = "") -> dict:
     """
     type_document = document_json.get("document_type", "unknown")
 
+    score_base = _score_base_normalise(document_json.get("ocr_confidence", ""))
+    score_final = _ajuster_confiance_selon_champs(document_json, score_base)
+
     document_sortie = {
         "document_type": type_document,
-        "ocr_confidence": _normaliser_score_confiance(
-            document_json.get("ocr_confidence", "")
-        ),
+        "ocr_confidence": score_final,
     }
 
     if type_document == "quote":

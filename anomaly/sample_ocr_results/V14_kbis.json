@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V14",
+  "documents": [
+    {
+      "document_type": "kbis",
+      "ocr_confidence": 1.0,
+      "company_name": "Weber Bonnet",
+      "siret": "78988914400349",
+      "legal_form": "SARL",
+      "creation_date": "2022-01-14",
+      "address": "rue Ferrand 92681 Olivier-sur-Moreau"
+    }
+  ]
+}

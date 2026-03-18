@@ -1,0 +1,17 @@
+{
+  "vendor_id": "V17",
+  "documents": [
+    {
+      "document_type": "invoice",
+      "ocr_confidence": 1.0,
+      "company_name": "Valentin SAS",
+      "siret": "63173893700616",
+      "invoice_number": "INV-3605",
+      "product_description": "Office Chair",
+      "amount_ht": "4123.41 €",
+      "vat_rate": "20%",
+      "total_ttc": "4948.09 €",
+      "invoice_issue_date": "2026-03-07"
+    }
+  ]
+}

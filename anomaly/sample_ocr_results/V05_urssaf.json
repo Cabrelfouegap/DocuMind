@@ -1,0 +1,14 @@
+{
+  "vendor_id": "V05",
+  "documents": [
+    {
+      "document_type": "urssaf",
+      "ocr_confidence": 1.0,
+      "company_name": "Brunet Consulting",
+      "siret": "32321406400558",
+      "certificate_number": "URSSAF-88155",
+      "issue_date": "2026-01-22",
+      "expiration_date": "2025-08-17"
+    }
+  ]
+}

@@ -58,26 +58,6 @@ services:
     networks:
       - documind-net
 
-  ocr:
-    build:
-      context: .
-      dockerfile: Docker/ocr/Dockerfile
-    container_name: documind-ocr
-    profiles:
-      - tools
-    volumes:
-      - ./Cleg-partie_ocr:/app
-
-  anomaly:
-    build:
-      context: .
-      dockerfile: Docker/anomaly/Dockerfile
-    container_name: documind-anomaly
-    profiles:
-      - tools
-    volumes:
-      - ./anomaly:/app
-
   postgres-airflow:
     image: postgres:15-alpine
     container_name: documind-postgres-airflow
