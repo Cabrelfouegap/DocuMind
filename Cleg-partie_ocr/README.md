@@ -8,7 +8,7 @@
 ## 📁 Structure du projet
 
 ```
-ocr/
+Cleg-partie_ocr/
 ├── pipeline_ocr.py       # Point d'entrée — orchestre tout
 ├── extraction_texte.py   # Lecture PDF / image + OCR EasyOCR
 ├── nettoyage.py          # Nettoyage du texte brut
