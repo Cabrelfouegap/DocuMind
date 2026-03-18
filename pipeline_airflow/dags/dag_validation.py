@@ -32,14 +32,31 @@ def valider_et_stocker(**context):
     vendors = defaultdict(list)
     for doc in clean_docs:
         payload = doc.get("ocrPayload", {})
-        vendor_id = payload.get("vendor_id", "unknown")
 
         documents_list = payload.get("documents", [])
         doc_data = documents_list[0] if documents_list else payload
 
+        # Clé de regroupement fournisseur :
+        # 1. SIRET si présent
+        # 2. Sinon company_name
+        # 3. Sinon vendor_id fourni
+        # 4. Sinon cleanDocumentId (clé unique de secours)
+        siret = str(doc_data.get("siret", "") or "").strip()
+        company = str(doc_data.get("company_name", "") or "").strip()
+        raw_vendor = str(payload.get("vendor_id", "") or "").strip()
+
+        if siret:
+            vendor_key = siret
+        elif company:
+            vendor_key = company
+        elif raw_vendor:
+            vendor_key = raw_vendor
+        else:
+            vendor_key = str(doc.get("_id"))
+
         doc_data["_clean_doc_id"] = str(doc["_id"])
         doc_data["_raw_doc_id"] = str(doc["rawDocumentId"])
-        vendors[vendor_id].append(doc_data)
+        vendors[vendor_key].append(doc_data)
 
     detector = RuleBasedAnomalyDetector()
 
@@ -52,6 +69,22 @@ def valider_et_stocker(**context):
 
             result = detector.detect(vendor_data)
             validation = result.get("validation", {})
+
+            # Détermine un SIRET et un nom d'entreprise "canonique" pour ce vendor
+            # en prenant le premier non vide trouvé dans les documents.
+            canon_siret = ""
+            canon_company = ""
+            for d in documents:
+                if not canon_siret:
+                    s = str(d.get("siret", "")).strip()
+                    if s:
+                        canon_siret = s
+                if not canon_company:
+                    cname = str(d.get("company_name", "")).strip()
+                    if cname:
+                        canon_company = cname
+                if canon_siret and canon_company:
+                    break
 
             for doc_data in documents:
                 clean_doc_id = doc_data.get("_clean_doc_id")
@@ -83,26 +116,34 @@ def valider_et_stocker(**context):
                 db["curateddocuments"].insert_one(curated_doc)
                 print(f"[VALIDATION] {vendor_id}/{doc_type} → curated | valid={validation.get('isValid')}")
 
-                remplir_frontends(raw_doc_id, curated_doc)
+                remplir_frontends(raw_doc_id, curated_doc, canon_siret, canon_company)
 
         except Exception as e:
             print(f"[VALIDATION] ERREUR vendor {vendor_id} : {e}")
 
     client.close()
 
-def remplir_frontends(raw_doc_id, curated_doc):
+
+def remplir_frontends(raw_doc_id, curated_doc, default_siret="", default_company_name=""):
     try:
+        extracted = curated_doc["extractedData"]
+
+        # On complète siret / company_name avec la valeur canonique du vendor si absent
+        siret = extracted.get("siret", "") or default_siret or ""
+        company_name = extracted.get("company_name", "") or default_company_name or ""
+
         payload = {
             "status": "Conforme" if curated_doc["validation"]["isValid"] else "Non conforme",
             "aiGenerated": True,
             "reason": "",
             "type": curated_doc.get("documentType", ""),
             "extractedData": {
-                "siret": curated_doc["extractedData"].get("siret", ""),
-                "amountHT": curated_doc["extractedData"].get("amount_ht", 0),
-                "amountTTC": curated_doc["extractedData"].get("total_ttc", 0),
-                "emissionDate": curated_doc["extractedData"].get("invoice_issue_date", ""),
-                "expirationDate": curated_doc["extractedData"].get("expiration_date", ""),
+                "siret": siret,
+                "companyName": company_name,
+                "amountHT": extracted.get("amount_ht", 0),
+                "amountTTC": extracted.get("total_ttc", 0),
+                "emissionDate": extracted.get("invoice_issue_date", ""),
+                "expirationDate": extracted.get("expiration_date", ""),
             }
         }
 

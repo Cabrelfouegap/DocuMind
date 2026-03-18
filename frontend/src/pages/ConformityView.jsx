@@ -155,9 +155,14 @@ const ConformityView = () => {
             </span>
           </div>
         </div>
-        <a href="/" className="text-xs text-slate-500 hover:text-indigo-600 transition-colors">
-          ← CRM
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="/" className="text-xs text-slate-500 hover:text-indigo-600 transition-colors">
+            ← CRM
+          </a>
+          <a href="/validation" className="text-xs text-slate-500 hover:text-indigo-600 transition-colors">
+            Résultats validation →
+          </a>
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-8 py-4 space-y-4">
@@ -259,7 +264,15 @@ const ConformityView = () => {
                           <StatusBadge status={doc.status} />
                         </td>
                         <td className="px-4 py-1.5 text-right font-medium text-slate-700">
-                          {doc.extractedData?.amountTTC ? `${doc.extractedData.amountTTC}€` : (doc.extractedData?.expirationDate ? `Exp: ${doc.extractedData.expirationDate}` : '—')}
+                          {doc.extractedData?.amountTTC
+                            ? `${doc.extractedData.amountTTC}€`
+                            : doc.extractedData?.expirationDate
+                              ? `Exp: ${doc.extractedData.expirationDate}`
+                              : doc.extractedData?.companyName
+                                ? doc.extractedData.companyName
+                                : doc.extractedData?.siret
+                                  ? doc.extractedData.siret
+                                  : '—'}
                         </td>
                         <td
                           className="px-4 py-1.5 text-slate-500 truncate text-[10px] cursor-help"
