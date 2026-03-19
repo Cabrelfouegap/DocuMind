@@ -1,9 +1,6 @@
 # structuration.py
-
 """
-structuration.py
-Construit le JSON final standardisé à partir de tous les éléments extraits
-C'est ce JSON qui sera envoyé au Data Lake / pipeline Airflow
+Construction du JSON final standardisé
 """
 
 import os
@@ -12,9 +9,6 @@ from datetime import datetime
 
 
 def calc_hash(chemin_fichier: str) -> str:
-    """
-    Calcule le hash MD5 du fichier source (utile pour déduplication dans le Data Lake)
-    """
     hasher = hashlib.md5()
     with open(chemin_fichier, "rb") as f:
         while chunk := f.read(8192):
@@ -23,9 +17,6 @@ def calc_hash(chemin_fichier: str) -> str:
 
 
 def _base_champs_par_type(type_document: str) -> dict:
-    """
-    Retourne la structure minimale attendue selon le type de document
-    """
     mapping = {
         "quote": {
             "company_name": "",
@@ -63,6 +54,8 @@ def _base_champs_par_type(type_document: str) -> dict:
             "address": "",
         },
         "rib": {
+            "company_name": "",
+            "siret": "",
             "bank_name": "",
             "iban": "",
             "bic": "",
@@ -72,11 +65,7 @@ def _base_champs_par_type(type_document: str) -> dict:
     return mapping.get(type_document, {})
 
 
-def _extraire_confiance_ocr(taux_erreur: dict = None):
-    """
-    Retourne un score OCR simple exploitable par les modules aval.
-    Peut être en pourcentage (0..100) ou vide.
-    """
+def _extraire_confiance_ocr(taux_erreur: dict | None = None):
     if not taux_erreur:
         return ""
 
@@ -89,10 +78,7 @@ def _extraire_confiance_ocr(taux_erreur: dict = None):
     return ""
 
 
-def _score_base_normalise(ocr_confidence):
-    """
-    Normalise un score OCR en 0..1
-    """
+def _normaliser_score_confiance(ocr_confidence):
     if ocr_confidence in ("", None):
         return 0.0
 
@@ -111,11 +97,6 @@ def _score_base_normalise(ocr_confidence):
 
 
 def _ajuster_confiance_selon_champs(document_json: dict, score_base: float) -> float:
-    """
-    Baisse la confiance si des champs critiques sont absents.
-    """
-    type_document = document_json.get("document_type", "unknown")
-
     champs_critiques = {
         "invoice": [
             "company_name", "siret", "invoice_number",
@@ -139,19 +120,27 @@ def _ajuster_confiance_selon_champs(document_json: dict, score_base: float) -> f
         ],
     }
 
+    type_document = document_json.get("document_type", "unknown")
     champs = champs_critiques.get(type_document, [])
+
     if not champs:
-        # document inconnu ou non géré
-        return round(max(0.0, min(1.0, score_base - 0.4)), 4)
+        return round(max(0.0, min(1.0, score_base - 0.5)), 4)
 
     nb_manquants = sum(1 for champ in champs if not document_json.get(champ, ""))
     ratio_manquants = nb_manquants / len(champs)
-
-    # pénalité progressive : jusqu'à -0.7 si tout est vide
-    score_final = score_base - (ratio_manquants * 0.7)
+    score_final = score_base - (ratio_manquants * 0.85)
 
     if type_document == "unknown":
         score_final -= 0.2
+
+    if type_document in {"invoice", "quote", "kbis", "urssaf"} and not document_json.get("siret", ""):
+        score_final -= 0.1
+
+    if type_document == "invoice" and not document_json.get("invoice_number", ""):
+        score_final -= 0.05
+
+    if type_document == "quote" and not document_json.get("quote_number", ""):
+        score_final -= 0.05
 
     return round(max(0.0, min(1.0, score_final)), 4)
 
@@ -161,17 +150,8 @@ def construire_json(
     texte_brut: str,
     texte_propre: str,
     entites: dict,
-    taux_erreur: dict = None
+    taux_erreur: dict | None = None,
 ) -> dict:
-    """
-    Assemble le JSON final normalisé
-    chemin_fichier : fichier source traité
-    texte_brut     : texte sorti directement de l'OCR
-    texte_propre   : texte après nettoyage
-    entites        : dict retourné par extraire_entites()
-    taux_erreur    : dict retourné par calc_taux_erreur() (None si pas calculé)
-    Retourne le dict JSON complet
-    """
     nom_fichier = os.path.basename(chemin_fichier)
     ext = nom_fichier.lower().split(".")[-1]
     hash_md5 = calc_hash(chemin_fichier)
@@ -190,12 +170,10 @@ def construire_json(
         "ocr_confidence": _extraire_confiance_ocr(taux_erreur),
     }
 
-    # Ajout des champs métier attendus selon le type
     base_champs = _base_champs_par_type(type_document)
     base_champs.update(champs_metier)
     resultat.update(base_champs)
 
-    # Informations techniques utiles pour debug / traçabilité
     resultat["meta"] = {
         "nom_fichier": nom_fichier,
         "extension": ext,
@@ -237,16 +215,8 @@ def construire_json(
 
 
 def construire_payload_vendor(document_json: dict, vendor_id: str = "") -> dict:
-    """
-    Construit le payload attendu par le module anomalie :
-    {
-      "vendor_id": "...",
-      "documents": [{...}]
-    }
-    """
     type_document = document_json.get("document_type", "unknown")
-
-    score_base = _score_base_normalise(document_json.get("ocr_confidence", ""))
+    score_base = _normaliser_score_confiance(document_json.get("ocr_confidence", ""))
     score_final = _ajuster_confiance_selon_champs(document_json, score_base)
 
     document_sortie = {
@@ -326,5 +296,5 @@ def construire_payload_vendor(document_json: dict, vendor_id: str = "") -> dict:
 
     return {
         "vendor_id": vendor_id,
-        "documents": [document_sortie]
+        "documents": [document_sortie],
     }
