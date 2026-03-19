@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const upload = require('../config/multer');
 const Document = require('../models/Document');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const { GridFSBucket, ObjectId } = require('mongodb');
 
 router.post('/upload', upload.array('files'), async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -11,15 +14,48 @@ router.post('/upload', upload.array('files'), async (req, res) => {
   }
 
   const resultats = [];
+  const vendorIdSession = `UPLOAD_${Date.now()}`;
+
+  // Zone Raw pour Airflow (rawdocuments + GridFS)
+  const db = mongoose.connection.db;
+  const bucket = new GridFSBucket(db, { bucketName: 'datalake_raw' });
+  const rawDocumentsCollection = db.collection('rawdocuments');
 
   for (let i = 0; i < req.files.length; i++) {
     const file = req.files[i];
+
+    // _id Mongo commun entre rawdocuments et Document backend.
+    const rawDocId = new ObjectId();
+
+    // 1) GridFS brut : le pipeline OCR retrouvera le fichier via storedFilePath (= filename GridFS)
+    const buffer = await fs.promises.readFile(file.path);
+    await new Promise((resolve, reject) => {
+      const uploadStream = bucket.openUploadStream(file.filename, {
+        contentType: file.mimetype,
+      });
+      uploadStream.end(buffer);
+      uploadStream.once('finish', resolve);
+      uploadStream.once('error', reject);
+    });
+
+    // 2) Insertion rawdocument (pour que dag_ingestion => dag_traitement => dag_validation s'exécute)
+    await rawDocumentsCollection.insertOne({
+      _id: rawDocId,
+      originalFileName: file.originalname,
+      storedFilePath: file.filename,
+      vendorId: vendorIdSession,
+      processingStatus: 'PENDING',
+    });
+
+    // 3) Document UX (créé avec le même _id pour que dag_validation puisse patcher /api/documents/:id)
     const newDoc = await Document.create({
+      _id: rawDocId,
       filename: file.filename,
       originalName: file.originalname,
       path: file.path,
       mimetype: file.mimetype,
     });
+
     resultats.push(newDoc);
   }
 
@@ -118,74 +154,43 @@ router.post('/:id/analyze', async (req, res) => {
     });
   }
 
-  const estImage = (document.mimetype === 'image/png' || document.mimetype === 'image/jpeg');
-  const estWord = (document.mimetype === 'application/msword' || document.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-
-  let statutSuggere = 'Conforme';
-  let motifSuggere = '';
-  let typeSuggere = 'Autre';
-
-  const nomFichier = document.originalName.toLowerCase();
-
-  const existing = document.extractedData || {};
-  const bodyData = (req.body && req.body.extractedData) ? req.body.extractedData : {};
-
-  const companyName =
-    bodyData.companyName ?? bodyData.company_name ?? existing.companyName ?? existing.company_name ?? '';
-  const amountHT =
-    bodyData.amountHT ?? bodyData.amount_ht ?? existing.amountHT ?? existing.amount_ht ?? 0;
-  const amountTTC =
-    bodyData.amountTTC ?? bodyData.total_ttc ?? existing.amountTTC ?? existing.total_ttc ?? 0;
-  const tvaNumber =
-    bodyData.tvaNumber ?? bodyData.vat_number ?? existing.tvaNumber ?? existing.vat_number ?? '';
-  const emissionDate =
-    bodyData.emissionDate ?? bodyData.invoice_issue_date ?? bodyData.issue_date ??
-    existing.emissionDate ?? existing.invoice_issue_date ?? existing.issue_date ?? '';
-  const expirationDate =
-    bodyData.expirationDate ?? bodyData.expiration_date ??
-    existing.expirationDate ?? existing.expiration_date ?? '';
-
-  const donneesExtraites = {
-    siret: bodyData.siret ?? existing.siret ?? '',
-    companyName,
-    tvaNumber,
-    amountHT: Number(amountHT) || 0,
-    amountTTC: Number(amountTTC) || 0,
-    emissionDate,
-    expirationDate,
-    inconsistencyNote: bodyData.inconsistencyNote ?? existing.inconsistencyNote ?? ''
-  };
-
-  if (nomFichier.includes('facture') || nomFichier.includes('invoice')) {
-    typeSuggere = 'Facture';
-  } else if (nomFichier.includes('kbis')) {
-    typeSuggere = 'KBIS';
-  } else if (nomFichier.includes('rib')) {
-    typeSuggere = 'RIB';
-  } else if (nomFichier.includes('urssaf')) {
-    typeSuggere = 'URSSAF';
-  } else if (nomFichier.includes('devis') || nomFichier.includes('quote')) {
-    typeSuggere = 'Devis';
-  } else if (estImage) {
-    typeSuggere = 'Identité';
-  }
-
-  if (estWord) {
-    statutSuggere = 'Non conforme';
-    motifSuggere = 'Signature ou données obligatoires manquantes (détecté par IA).';
-  }
-
+  // Non destructif : on ne doit pas forcer "Conforme" sans passer par Airflow.
   const docFinal = await Document.findByIdAndUpdate(
     idDocument,
     {
-      status: statutSuggere,
-      reason: motifSuggere,
-      aiGenerated: true,
-      type: typeSuggere,
-      extractedData: donneesExtraites
+      status: 'En attente',
+      reason: 'Traitement OCR + validation déclenchés (Airflow).',
+      aiGenerated: false
     },
     { new: true }
   );
+
+  // Best-effort : marquer le rawdocument en PENDING (au cas où)
+  try {
+    await mongoose.connection.db.collection('rawdocuments').updateOne(
+      { _id: new ObjectId(idDocument) },
+      { $set: { processingStatus: 'PENDING' } }
+    );
+  } catch (_e) {
+    // ignore
+  }
+
+  // Best-effort : déclencher un run de dag_ingestion pour démarrer rapidement.
+  try {
+    const airflowBaseUrl = process.env.AIRFLOW_BASE_URL || 'http://airflow-webserver:8080';
+    const url = `${airflowBaseUrl}/api/v1/dags/dag_ingestion/dagRuns`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+      signal: controller.signal,
+    }).catch(() => {});
+    clearTimeout(timer);
+  } catch (_e) {
+    // ignore
+  }
 
   res.json(docFinal);
 });
