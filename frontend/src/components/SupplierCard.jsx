@@ -2,9 +2,21 @@ import React from 'react';
 
 const SupplierCard = (props) => {
   const leFournisseur = props.supplier;
-  const lesDocuments = props.documents;
+  const lesDocuments = props.documents || [];
   const fonctionVoir = props.onView;
   const fonctionTelecharger = props.onDownload;
+  const anomalyCount = props.anomalyCount ?? 0;
+  const supplierStatus = props.supplierStatus ?? 'UNKNOWN';
+  const onShowAnomalies = props.onShowAnomalies;
+  const documentsCount = props.documentsCount ?? lesDocuments.length;
+
+  const anomalyStatusStyle = (() => {
+    const s = String(supplierStatus || '').toUpperCase();
+    if (s === 'VALID') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (s === 'WARNING') return 'bg-orange-100 text-orange-700 border-orange-200';
+    if (s === 'SUSPICIOUS') return 'bg-red-100 text-red-700 border-red-200';
+    return 'bg-slate-100 text-slate-700 border-slate-200';
+  })();
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-indigo-300 transition-all">
@@ -22,13 +34,32 @@ const SupplierCard = (props) => {
           <p className="text-sm font-bold text-indigo-600">
             {Number(leFournisseur.totalAmount || 0).toFixed(2)}€
           </p>
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-semibold ${anomalyStatusStyle}`}>
+              <span>Anomalies</span>
+              <span className="tabular-nums">{anomalyCount}</span>
+            </span>
+            <button
+              onClick={() => onShowAnomalies?.(leFournisseur.siret)}
+              disabled={!onShowAnomalies || anomalyCount === 0}
+              className="text-[10px] font-semibold px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Voir les anomalies et la preuve"
+            >
+              Détails
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="p-4 space-y-2">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2">Documents rattachés ({lesDocuments.length})</p>
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2">Documents rattachés ({documentsCount})</p>
         <div className="space-y-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-          {lesDocuments.map((doc) => {
+          {lesDocuments.length === 0 ? (
+            <div className="text-[10px] text-slate-400 px-2 py-2">
+              Les documents apparaissent dans les détails.
+            </div>
+          ) : (
+            lesDocuments.map((doc) => {
             let couleurPoint = 'bg-slate-300';
             if (doc.status === 'Conforme') {
               couleurPoint = 'bg-emerald-400';
@@ -74,7 +105,8 @@ const SupplierCard = (props) => {
                 </div>
               </div>
             );
-          })}
+            })
+          )}
         </div>
       </div>
     </div>

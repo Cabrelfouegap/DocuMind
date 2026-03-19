@@ -4,8 +4,11 @@ import {
   fetchDocuments as getDocuments,
   uploadDocument as sendFiles,
   updateDocument as updateDoc,
-  analyzeDocument as runIA
+  analyzeDocument as runIA,
+  fetchAnomaliesSuppliersSummary,
+  fetchAnomaliesSupplierDetails,
 } from '../api/documents.js';
+import SupplierCard from '../components/SupplierCard.jsx';
 
 export default function ConformityView() {
   const [listeDocs, setListeDocs] = useState([]);
@@ -16,12 +19,31 @@ export default function ConformityView() {
   const [estAuDessus, setEstAuDessus] = useState(false);
   const [idsEnCoursDAnalyse, setIdsEnCoursDAnalyse] = useState([]);
 
+  const [anomaliesSuppliers, setAnomaliesSuppliers] = useState([]);
+
+  const [anomaliesModalOpen, setAnomaliesModalOpen] = useState(false);
+  const [selectedSupplierSiret, setSelectedSupplierSiret] = useState('');
+  const [selectedSupplierDetails, setSelectedSupplierDetails] = useState(null);
+  const [supplierDetailsLoading, setSupplierDetailsLoading] = useState(false);
+
   const inputFichierRef = useRef(null);
 
   const chargerDocs = async () => {
     try {
       const reponse = await getDocuments();
-      setListeDocs(reponse.data);
+      const docs = reponse.data || [];
+      setListeDocs(docs);
+
+      // Fallback: si la zone Document est vide (ex: rebuild backend),
+      // on affiche les fournisseurs depuis la zone Curated.
+      if (!docs || docs.length === 0) {
+        try {
+          const anomaliesRes = await fetchAnomaliesSuppliersSummary();
+          setAnomaliesSuppliers(anomaliesRes.data || []);
+        } catch (err) {
+          console.error('Erreur chargement anomalies:', err);
+        }
+      }
     } catch (err) {
       console.error('Erreur:', err);
     } finally {
@@ -99,6 +121,22 @@ export default function ConformityView() {
     );
   };
 
+  const ouvrirModalAnomalies = async (siret) => {
+    if (!siret) return;
+    setSelectedSupplierSiret(String(siret));
+    setSelectedSupplierDetails(null);
+    setAnomaliesModalOpen(true);
+    setSupplierDetailsLoading(true);
+    try {
+      const reponse = await fetchAnomaliesSupplierDetails(String(siret));
+      setSelectedSupplierDetails(reponse.data || null);
+    } catch (err) {
+      console.error('Erreur chargement détails anomalies:', err);
+    } finally {
+      setSupplierDetailsLoading(false);
+    }
+  };
+
   return (
     <div style={container}>
       <Header />
@@ -161,7 +199,34 @@ export default function ConformityView() {
           {estEnTrainDeCharger ? (
             <div style={loadingStyle}>Chargement...</div>
           ) : listeDocs.length === 0 ? (
-            <div style={emptyStyle}>Aucun document.</div>
+            anomaliesSuppliers.length > 0 ? (
+              <div style={{ ...emptyStyle, paddingTop: '1rem' }}>
+                <div style={{ fontWeight: 700, color: '#111827', marginBottom: 8 }}>
+                  Aucun document brut, mais fournisseurs détectés via `Curated`.
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {anomaliesSuppliers.map((a) => (
+                    <SupplierCard
+                      key={a.siret}
+                      supplier={{
+                        siret: a.siret,
+                        name: a.companyName || 'Fournisseur',
+                        totalAmount: 0,
+                      }}
+                      documents={[]}
+                      documentsCount={a.docCount ?? 0}
+                      onView={() => {}}
+                      onDownload={() => {}}
+                      anomalyCount={a.anomalyCount ?? 0}
+                      supplierStatus={a.status ?? 'UNKNOWN'}
+                      onShowAnomalies={ouvrirModalAnomalies}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={emptyStyle}>Aucun document.</div>
+            )
           ) : documentsAffiches.length === 0 ? (
             <div style={emptyStyle}>Aucun résultat.</div>
           ) : (
@@ -210,6 +275,19 @@ export default function ConformityView() {
                         >
                           <FaEye size={14} />
                         </a>
+                        {doc.extractedData?.siret ? (
+                          <button
+                            type="button"
+                            style={anomaliesButton}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              ouvrirModalAnomalies(doc.extractedData.siret);
+                            }}
+                            title="Voir anomalies et preuves (par fournisseur)"
+                          >
+                            Voir
+                          </button>
+                        ) : null}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
                         {doc.status === 'En attente' ? (
@@ -244,6 +322,214 @@ export default function ConformityView() {
           )}
         </div>
       </main>
+
+      {anomaliesModalOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setAnomaliesModalOpen(false)} />
+          <div className="relative mx-auto mt-16 mb-8 max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden max-h-[calc(100vh-8rem)] flex flex-col">
+            <div className="p-5 border-b flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-900">Anomalies fournisseur</h2>
+                <p className="text-sm text-slate-600 font-mono">SIRET: {selectedSupplierSiret || '—'}</p>
+                {selectedSupplierDetails?.companyName && (
+                  <p className="text-sm text-slate-600">
+                    Société: <span className="font-semibold">{selectedSupplierDetails.companyName}</span>
+                  </p>
+                )}
+              </div>
+              <button
+                className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold"
+                onClick={() => setAnomaliesModalOpen(false)}
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              {supplierDetailsLoading ? (
+                <div className="text-center py-10 text-slate-500 font-medium">Chargement des détails...</div>
+              ) : !selectedSupplierDetails ? (
+                <div className="text-center py-10 text-slate-500 font-medium">Aucun détail disponible pour ce fournisseur.</div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold">
+                      Statut: {selectedSupplierDetails.status}
+                    </span>
+                    <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold">
+                      Score: {Number(selectedSupplierDetails.finalScore || 0)}
+                    </span>
+                    <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold">
+                      Anomalies: {Number(selectedSupplierDetails.anomalyCount || 0)}
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const allDocs = selectedSupplierDetails.documents || [];
+                    const flattened = allDocs.flatMap((d) => d.validation?.anomaliesDetected || []);
+                    const dedupMap = new Map();
+                    for (const a of flattened) {
+                      const key = `${a.anomalyCode}|${a.severity}|${a.message}|${JSON.stringify(a.details || {})}`;
+                      if (!dedupMap.has(key)) dedupMap.set(key, a);
+                    }
+                    const deduped = Array.from(dedupMap.values());
+
+                    const severityToColors = (sev) => {
+                      const s = String(sev || '').toLowerCase();
+                      if (s === 'high' || s === 'critical') return { bg: 'bg-red-50', bd: 'border-red-200', tx: 'text-red-700' };
+                      if (s === 'medium') return { bg: 'bg-orange-50', bd: 'border-orange-200', tx: 'text-orange-700' };
+                      if (s === 'low') return { bg: 'bg-slate-50', bd: 'border-slate-200', tx: 'text-slate-700' };
+                      return { bg: 'bg-slate-50', bd: 'border-slate-200', tx: 'text-slate-700' };
+                    };
+
+                    const renderDetails = (details) => {
+                      const d = details && typeof details === 'object' ? details : null;
+                      if (!d) return <div className="text-sm text-slate-600">—</div>;
+
+                      const docKeys = ['quote', 'invoice', 'urssaf', 'kbis', 'rib'];
+                      const keys = Object.keys(d);
+                      const looksLikeDocTypeMapping = keys.length > 0 && keys.every((k) => docKeys.includes(k));
+
+                      if (looksLikeDocTypeMapping) {
+                        return (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+                              <thead className="bg-slate-50">
+                                <tr>
+                                  <th className="p-2 text-left text-slate-600 font-semibold text-xs">Document</th>
+                                  <th className="p-2 text-left text-slate-600 font-semibold text-xs">Valeur</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {docKeys
+                                  .filter((k) => d[k] !== undefined)
+                                  .map((k) => (
+                                    <tr key={k} className="border-t border-slate-100">
+                                      <td className="p-2 text-slate-700 font-medium text-xs">{k}</td>
+                                      <td className="p-2 text-slate-700 text-xs font-mono">{String(d[k] || '')}</td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      }
+
+                      const tableRows = [];
+                      const pushRow = (label, value, force = false) => {
+                        const v = value === undefined || value === null ? '' : value;
+                        if (!force && (Array.isArray(v) ? v.length === 0 : String(v).trim() === '')) return;
+                        tableRows.push(
+                          <tr key={label} className="border-t border-slate-100">
+                            <td className="p-2 text-slate-600 font-semibold text-xs">{label}</td>
+                            <td className="p-2 text-slate-700 text-xs font-mono">{Array.isArray(v) ? v.join(', ') : String(v)}</td>
+                          </tr>
+                        );
+                      };
+
+                      pushRow('missingFields', d.missingFields, true);
+                      pushRow('missingDocumentTypes', d.missingDocumentTypes, true);
+                      pushRow('siret', d.siret);
+                      pushRow('companyName', d.companyName);
+                      pushRow('accountHolder', d.accountHolder);
+                      pushRow('iban', d.iban);
+                      pushRow('expirationDate', d.expirationDate);
+                      pushRow('checkedAt', d.checkedAt);
+                      pushRow('amountHt', d.amountHt);
+                      pushRow('vatRate', d.vatRate);
+                      pushRow('expectedTotalTtc', d.expectedTotalTtc);
+                      pushRow('detectedTotalTtc', d.detectedTotalTtc);
+                      pushRow('quoteTotalTtc', d.quoteTotalTtc);
+                      pushRow('invoiceTotalTtc', d.invoiceTotalTtc);
+                      pushRow('difference', d.difference);
+                      pushRow('triggeredHighRiskRules', d.triggeredHighRiskRules);
+
+                      if (tableRows.length > 0) {
+                        return (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+                              <tbody>{tableRows}</tbody>
+                            </table>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <pre className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 overflow-auto">
+                          {JSON.stringify(d, null, 2)}
+                        </pre>
+                      );
+                    };
+
+                    return (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">Anomalies (preuves)</h3>
+                          {deduped.length === 0 ? (
+                            <div className="text-sm text-slate-600 mt-2">Aucune anomalie détectée.</div>
+                          ) : (
+                            <div className="mt-3 space-y-3">
+                              {deduped.map((a, idx) => {
+                                const c = severityToColors(a.severity);
+                                return (
+                                  <div key={idx} className="border border-slate-200 rounded-2xl overflow-hidden">
+                                    <div className="p-4 bg-slate-50 flex items-start justify-between gap-4">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={`px-2.5 py-1 rounded-xl border text-[10px] font-semibold ${c.bg} ${c.bd} ${c.tx}`}>
+                                            {String(a.severity || '').toUpperCase()}
+                                          </span>
+                                          <span className="text-xs font-mono text-slate-700 font-semibold">{a.anomalyCode}</span>
+                                        </div>
+                                        <p className="mt-2 text-sm text-slate-700 font-medium">{a.message}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Score</div>
+                                        <div className="text-sm font-bold text-indigo-700 tabular-nums">{a.score ?? 0}</div>
+                                      </div>
+                                    </div>
+                                    <div className="p-4 border-t border-slate-200">{renderDetails(a.details)}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">Documents utilisés</h3>
+                          <div className="mt-3 space-y-3">
+                            {(selectedSupplierDetails.documents || []).map((doc, idx) => (
+                              <div
+                                key={`${doc.documentType || 'doc'}_${idx}`}
+                                className="border border-slate-200 rounded-2xl p-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-xs font-mono text-slate-600 font-semibold">Type: {doc.documentType}</div>
+                                    <div className="text-sm font-bold text-slate-900">
+                                      {doc.extractedData?.company_name || doc.extractedData?.companyName || '—'}
+                                    </div>
+                                    <div className="text-xs text-slate-500 font-mono mt-1">SIRET: {doc.extractedData?.siret || '—'}</div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Statut document</div>
+                                    <div className="text-sm font-bold text-indigo-700">{doc.validation?.status || 'UNKNOWN'}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -447,6 +733,20 @@ const viewButton = {
   fontSize: '0.85rem',
   textDecoration: 'none',
   justifyContent: 'center'
+};
+const anomaliesButton = {
+  marginLeft: 8,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0.2rem 0.45rem',
+  borderRadius: 8,
+  background: '#fff7ed',
+  color: '#9a3412',
+  fontSize: '0.85rem',
+  border: '1px solid #fed7aa',
+  cursor: 'pointer',
+  fontWeight: 600,
 };
 const loadingStyle = { textAlign: 'center', color: '#6b7280', padding: '2rem' };
 const emptyStyle = { textAlign: 'center', color: '#6b7280', padding: '2rem' };
