@@ -49,7 +49,8 @@ L'architecture repose sur une pile **MERN** avec **MongoDB** comme moteur de bas
 
 2. **Configuration** :
    * Créer un fichier .env à la racine du dossier.
-   * Ajouter : 'MONGO_URI=mongodb://USER:PASSWORD@localhost:27017/hackathon_ipssi?authSource=admin'
+   * Ajouter : ```bash MONGO_URI=mongodb://USER:PASSWORD@localhost:27017/hackathon_ipssi?authSource=admin 
+```
     (Remplacez USER et PASSWORD par vos identifiants personnels).
 
 3. **Installation** :
