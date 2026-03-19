@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Final
 
 
+# Configuration des règles d'anomalies
+
+
 RULES_CONFIG: Final[dict[str, dict[str, object]]] = {
     "LOW_OCR_CONFIDENCE": {
         "severity": "low",
@@ -61,6 +64,7 @@ RULES_CONFIG: Final[dict[str, dict[str, object]]] = {
     },
 }
 
+# Champs obligatoires par type de document
 
 REQUIRED_FIELDS: Final[dict[str, list[str]]] = {
     "quote": [
@@ -103,9 +107,11 @@ REQUIRED_FIELDS: Final[dict[str, list[str]]] = {
         "iban",
         "bic",
         "account_holder",
-        
     ],
 }
+
+
+# Types de documents attendus pour un fournisseur
 
 
 EXPECTED_DOCUMENT_TYPES: Final[list[str]] = [
@@ -115,6 +121,9 @@ EXPECTED_DOCUMENT_TYPES: Final[list[str]] = [
     "kbis",
     "rib",
 ]
+
+
+# Sous-ensembles de documents utilisés par certaines règles
 
 SIRET_RELEVANT_DOCS: Final[list[str]] = [
     "quote",
@@ -137,21 +146,32 @@ FINANCIAL_DOCS: Final[list[str]] = [
 ]
 
 
+# Règles considérées comme critiques
+# Utilisées pour déclencher MULTIPLE_HIGH_RISK_SIGNALS
+
 HIGH_RISK_RULE_CODES: Final[set[str]] = {
     "URSSAF_EXPIRED",
     "SIRET_MISMATCH",
     "RIB_ACCOUNT_HOLDER_MISMATCH",
 }
 
+# Seuils métier
+
 
 OCR_CONFIDENCE_THRESHOLD: Final[float] = 0.80
 AMOUNT_TOLERANCE: Final[float] = 1.00
+
+# Formats de dates acceptés
+
 
 DATE_FORMATS: Final[list[str]] = [
     "%Y-%m-%d",
     "%d/%m/%Y",
     "%d-%m-%Y",
 ]
+
+
+# Intervalles de scoring pour la décision finale
 
 STATUS_THRESHOLDS: Final[dict[str, tuple[int, int]]] = {
     "VALID": (0, 19),
