@@ -5,7 +5,7 @@ from pathlib import Path
 from batch_processor import process_directory, save_json
 
 
-INPUT_DIR = Path("resultats_ocr_metier")
+INPUT_DIR = Path("sample_ocr_results")
 OUTPUT_FILE = Path("anomaly_results.json")
 
 

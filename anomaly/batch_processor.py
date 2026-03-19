@@ -25,18 +25,25 @@ def save_json(data: Any, output_file: Path) -> None:
 
 def merge_vendor_payloads(input_dir: Path) -> list[dict[str, Any]]:
     """
-    Lit tous les fichiers JSON OCR du dossier, les normalise,
+    Lit tous les fichiers JSON du dossier, les normalise,
     puis fusionne les documents par vendorId.
+    Compatible avec :
+    - OCR brut par vendor
+    - document unitaire
+    - payload déjà normalisé
     """
     merged_vendors: dict[str, dict[str, Any]] = {}
 
     for file_path in sorted(input_dir.glob("*.json")):
-        raw_payload = load_json_file(file_path)
-
-        normalized_payload = ensure_detector_input_format(
-            raw_payload,
-            source_name=file_path.name,
-        )
+        try:
+            raw_payload = load_json_file(file_path)
+            normalized_payload = ensure_detector_input_format(
+                raw_payload,
+                source_name=file_path.name,
+            )
+        except Exception as e:
+            print(f"[WARNING] Erreur sur {file_path.name}: {e}")
+            continue
 
         vendor_id = normalized_payload.get("vendorId")
         documents = normalized_payload.get("documents", [])
@@ -60,10 +67,6 @@ def process_directory(
     input_dir: Path,
     detector: RuleBasedAnomalyDetector | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    Traite un dossier complet de résultats OCR et retourne
-    les résultats de détection d’anomalies par vendor.
-    """
     detector = detector or RuleBasedAnomalyDetector()
 
     vendor_payloads = merge_vendor_payloads(input_dir)

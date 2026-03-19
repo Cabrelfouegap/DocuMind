@@ -4,6 +4,8 @@
     {
       "document_type": "rib",
       "ocr_confidence": 1.0,
+      "company_name": "Lemoine Consulting",
+      "siret": "",
       "bank_name": "HSBC France",
       "iban": "FR4482632712187603520138627",
       "bic": "AHFKFRUJABG",
