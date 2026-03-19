@@ -14,6 +14,7 @@ sys.path.insert(0, '/opt/airflow/anomaly')
 MONGO_URI   = os.environ.get("MONGO_URI")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:5000")
 
+
 def valider_et_stocker(**context):
     from engine import RuleBasedAnomalyDetector
     from adapter import ensure_detector_input_format
@@ -22,7 +23,6 @@ def valider_et_stocker(**context):
     db     = client["hackathon_ipssi"]
 
     # Ne traiter QUE les documents pas encore dans curateddocuments
-    # On récupère les cleanDocumentId déjà traités
     already_curated = set(
         str(c["cleanDocumentId"])
         for c in db["curateddocuments"].find({}, {"cleanDocumentId": 1})
@@ -89,16 +89,16 @@ def valider_et_stocker(**context):
                     "documentType":    doc_type,
                     "extractedData":   extracted,
                     "validation": {
-                        "isValid":            validation.get("isValid", False),
-                        "ruleScoreRaw":       validation.get("ruleScoreRaw", 0),
-                        "ruleScoreNormalized":validation.get("ruleScoreNormalized", 0),
-                        "finalScore":         validation.get("finalScore", 0),
-                        "status":             validation.get("status", "UNKNOWN"),
-                        "decision":           validation.get("decision", "verification_manuelle"),
-                        "anomalyCount":       validation.get("anomalyCount", 0),
-                        "lastCheckedAt":      datetime.utcnow(),
-                        "engineVersion":      validation.get("engineVersion", ""),
-                        "anomaliesDetected":  validation.get("anomaliesDetected", []),
+                        "isValid":             validation.get("isValid", False),
+                        "ruleScoreRaw":        validation.get("ruleScoreRaw", 0),
+                        "ruleScoreNormalized": validation.get("ruleScoreNormalized", 0),
+                        "finalScore":          validation.get("finalScore", 0),
+                        "status":              validation.get("status", "UNKNOWN"),
+                        "decision":            validation.get("decision", "verification_manuelle"),
+                        "anomalyCount":        validation.get("anomalyCount", 0),
+                        "lastCheckedAt":       datetime.utcnow(),
+                        "engineVersion":       validation.get("engineVersion", ""),
+                        "anomaliesDetected":   validation.get("anomaliesDetected", []),
                     }
                 }
 
@@ -112,22 +112,37 @@ def valider_et_stocker(**context):
 
     client.close()
 
+
 def remplir_frontends(raw_doc_id, curated_doc):
     try:
-        is_valid = curated_doc["validation"]["isValid"]
-        anomalies = curated_doc["validation"].get("anomaliesDetected", [])
+        validation = curated_doc.get("validation", {}) or {}
+        is_valid = validation.get("isValid", False)
+        engine_status = (validation.get("status") or "").upper()
+        anomalies = validation.get("anomaliesDetected", []) or []
+
+        extracted = curated_doc.get("extractedData", {}) or {}
+
+        # Mapping moteur -> statuts frontend
+        # VALID -> Conforme | WARNING -> Warning | SUSPICIOUS/other -> Non conforme
+        if engine_status == "VALID":
+            front_status = "Conforme"
+        elif engine_status == "WARNING":
+            front_status = "Warning"
+        else:
+            front_status = "Non conforme"
 
         payload = {
-            "status":      "Conforme" if is_valid else "Non conforme",
+            "status":      front_status,
             "aiGenerated": True,
-            "reason":      anomalies[0].get("message", "") if anomalies and not is_valid else "",
+            "reason":      anomalies[0].get("message", "") if anomalies and front_status != "Conforme" else "",
             "type":        curated_doc.get("documentType", ""),
             "extractedData": {
-                "siret":          curated_doc["extractedData"].get("siret", ""),
-                "amountHT":       curated_doc["extractedData"].get("amount_ht", 0),
-                "amountTTC":      curated_doc["extractedData"].get("total_ttc", 0),
-                "emissionDate":   curated_doc["extractedData"].get("invoice_issue_date", ""),
-                "expirationDate": curated_doc["extractedData"].get("expiration_date", ""),
+                "siret":          extracted.get("siret", ""),
+                "companyName":    extracted.get("company_name") or extracted.get("companyName", ""),
+                "amountHT":       extracted.get("amount_ht", 0),
+                "amountTTC":      extracted.get("total_ttc", 0),
+                "emissionDate":   extracted.get("invoice_issue_date", ""),
+                "expirationDate": extracted.get("expiration_date", ""),
             }
         }
 
@@ -141,6 +156,7 @@ def remplir_frontends(raw_doc_id, curated_doc):
 
     except Exception as e:
         print(f"[VALIDATION] Erreur frontend {raw_doc_id} : {e}")
+
 
 with DAG(
     dag_id="dag_validation",
@@ -160,3 +176,4 @@ with DAG(
         python_callable=valider_et_stocker,
         provide_context=True,
     )
+

@@ -19,7 +19,9 @@ const SupplierCard = (props) => {
         </div>
         <div className="text-right">
           <p className="text-[10px] text-slate-400 uppercase font-medium">Cumul Validé</p>
-          <p className="text-sm font-bold text-indigo-600">{leFournisseur.totalAmount.toFixed(2)}€</p>
+          <p className="text-sm font-bold text-indigo-600">
+            {Number(leFournisseur.totalAmount || 0).toFixed(2)}€
+          </p>
         </div>
       </div>
 
@@ -27,10 +29,11 @@ const SupplierCard = (props) => {
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2">Documents rattachés ({lesDocuments.length})</p>
         <div className="space-y-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
           {lesDocuments.map((doc) => {
-
-            let couleurPoint = 'bg-amber-400';
+            let couleurPoint = 'bg-slate-300';
             if (doc.status === 'Conforme') {
               couleurPoint = 'bg-emerald-400';
+            } else if (doc.status === 'Warning') {
+              couleurPoint = 'bg-orange-400';
             } else if (doc.status === 'Non conforme') {
               couleurPoint = 'bg-red-400';
             }

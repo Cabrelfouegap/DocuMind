@@ -18,9 +18,9 @@ const documentSchema = new mongoose.Schema({
     required: true
   },
   status: {
-    type: String,
-    enum: ['En attente', 'Conforme', 'Non conforme'],
-    default: 'En attente'
+  type: String,
+  enum: ['En attente', 'Conforme', 'Non conforme', 'Warning'],
+  default: 'En attente'
   },
   reason: {
     type: String,
@@ -36,6 +36,7 @@ const documentSchema = new mongoose.Schema({
   },
   extractedData: {
     siret: { type: String, default: '' },
+    companyName: { type: String, default: '' },
     tvaNumber: { type: String, default: '' },
     amountHT: { type: Number, default: 0 },
     amountTTC: { type: Number, default: 0 },

@@ -21,6 +21,18 @@ const CRMView = () => {
       });
   }, []);
 
+  const normaliserMontant = (valeurBrute) => {
+    if (valeurBrute === null || valeurBrute === undefined) return 0;
+    if (typeof valeurBrute === 'number') return valeurBrute;
+
+    const texte = String(valeurBrute)
+      .replace(/[^\d,.\-]/g, '')
+      .replace(',', '.');
+
+    const n = parseFloat(texte);
+    return Number.isNaN(n) ? 0 : n;
+  };
+
   const creerListeFournisseurs = () => {
     const dictionnaire = {};
 
@@ -28,17 +40,20 @@ const CRMView = () => {
       const doc = tousLesDocs[i];
       const siret = doc.extractedData?.siret || 'Sans SIRET';
 
-      let nomFournisseur = 'Fournisseur Inconnu';
-      if (doc.originalName.toLowerCase().includes('vigilance')) {
-        nomFournisseur = 'URSSAF / Administration';
-      } else if (doc.originalName.toLowerCase().includes('contrat')) {
-        nomFournisseur = 'Service Prestation Plus';
-      } else if (doc.originalName.toLowerCase().includes('facture')) {
-        const morceaux = doc.originalName.split('_');
-        if (morceaux.length > 2) {
-          nomFournisseur = morceaux[1];
-        } else {
-          nomFournisseur = 'Fournisseur Divers';
+      const nomFichierMinuscule = doc.originalName.toLowerCase();
+      const nomSansExtension = doc.originalName.split('.')[0];
+
+      const nomCompagnieOCR = doc.extractedData?.companyName || doc.extractedData?.company_name || '';
+
+      let nomFournisseur = nomCompagnieOCR || 'Fournisseur Inconnu';
+
+      if (!nomCompagnieOCR && siret === 'Sans SIRET') {
+        nomFournisseur = 'A vérifier';
+      } else if (!nomCompagnieOCR) {
+        if (nomFichierMinuscule.includes('contrat')) {
+          nomFournisseur = 'Service Prestation Plus';
+        } else if (nomSansExtension) {
+          nomFournisseur = nomSansExtension.replace(/[_-]+/g, ' ');
         }
       }
 
@@ -53,8 +68,9 @@ const CRMView = () => {
 
       dictionnaire[siret].documents.push(doc);
 
-      if (doc.status === 'Conforme' && doc.extractedData?.amountTTC) {
-        dictionnaire[siret].totalAmount = dictionnaire[siret].totalAmount + doc.extractedData.amountTTC;
+      if (doc.status === 'Conforme') {
+        const montant = normaliserMontant(doc.extractedData?.amountTTC);
+        dictionnaire[siret].totalAmount = dictionnaire[siret].totalAmount + montant;
       }
     }
 
