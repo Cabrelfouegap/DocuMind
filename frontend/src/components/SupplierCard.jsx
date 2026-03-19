@@ -30,7 +30,7 @@ const SupplierCard = (props) => {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-slate-400 uppercase font-medium">Cumul Validé</p>
+          <p className="text-[10px] text-slate-400 uppercase font-medium">Cumul HT Validé</p>
           <p className="text-sm font-bold text-indigo-600">
             {Number(leFournisseur.totalAmount || 0).toFixed(2)}€
           </p>

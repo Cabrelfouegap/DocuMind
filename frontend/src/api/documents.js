@@ -20,7 +20,6 @@ export const analyzeDocument = (id) => {
   return api.post('/documents/' + id + '/analyze');
 };
 
-// Anomalies par fournisseur (SIRET) - basées sur la zone Curated
 export const fetchAnomaliesSuppliersSummary = () => {
   return api.get('/conformity/suppliers');
 };

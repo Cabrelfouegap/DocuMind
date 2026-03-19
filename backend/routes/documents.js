@@ -6,6 +6,25 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const { GridFSBucket, ObjectId } = require('mongodb');
 
+const parseAmount = (rawValue) => {
+  if (rawValue === null || rawValue === undefined) return 0;
+  if (typeof rawValue === 'number') return Number.isFinite(rawValue) ? rawValue : 0;
+
+  let text = String(rawValue).trim();
+  if (!text) return 0;
+
+  text = text.replace(/[^\d,.\-]/g, '');
+
+  if (text.includes(',') && text.includes('.')) {
+    text = text.replace(/,/g, '');
+  } else if (text.includes(',')) {
+    text = text.replace(',', '.');
+  }
+
+  const amount = Number.parseFloat(text);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
 router.post('/upload', upload.array('files'), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({
@@ -15,20 +34,15 @@ router.post('/upload', upload.array('files'), async (req, res) => {
 
   const resultats = [];
   const vendorIdSession = `UPLOAD_${Date.now()}`;
-
-  // Zone Raw pour Airflow (rawdocuments + GridFS)
   const db = mongoose.connection.db;
   const bucket = new GridFSBucket(db, { bucketName: 'datalake_raw' });
   const rawDocumentsCollection = db.collection('rawdocuments');
 
   for (let i = 0; i < req.files.length; i++) {
     const file = req.files[i];
-
-    // _id Mongo commun entre rawdocuments et Document backend.
-    const rawDocId = new ObjectId();
-
-    // 1) GridFS brut : le pipeline OCR retrouvera le fichier via storedFilePath (= filename GridFS)
+    const rawDocId = new ObjectId();    
     const buffer = await fs.promises.readFile(file.path);
+
     await new Promise((resolve, reject) => {
       const uploadStream = bucket.openUploadStream(file.filename, {
         contentType: file.mimetype,
@@ -38,7 +52,6 @@ router.post('/upload', upload.array('files'), async (req, res) => {
       uploadStream.once('error', reject);
     });
 
-    // 2) Insertion rawdocument (pour que dag_ingestion => dag_traitement => dag_validation s'exécute)
     await rawDocumentsCollection.insertOne({
       _id: rawDocId,
       originalFileName: file.originalname,
@@ -47,7 +60,6 @@ router.post('/upload', upload.array('files'), async (req, res) => {
       processingStatus: 'PENDING',
     });
 
-    // 3) Document UX (créé avec le même _id pour que dag_validation puisse patcher /api/documents/:id)
     const newDoc = await Document.create({
       _id: rawDocId,
       filename: file.filename,
@@ -107,8 +119,8 @@ router.patch('/:id', async (req, res) => {
     siret: e.siret ?? current.siret ?? '',
     companyName,
     tvaNumber,
-    amountHT: Number(amountHT) || 0,
-    amountTTC: Number(amountTTC) || 0,
+    amountHT: parseAmount(amountHT),
+    amountTTC: parseAmount(amountTTC),
     emissionDate,
     expirationDate,
     inconsistencyNote: e.inconsistencyNote ?? current.inconsistencyNote ?? ''
@@ -145,16 +157,12 @@ router.patch('/:id', async (req, res) => {
 
 router.post('/:id/analyze', async (req, res) => {
   const idDocument = req.params.id;
-
   const document = await Document.findById(idDocument);
-
   if (!document) {
     return res.status(404).json({
       message: 'Document introuvable'
     });
-  }
-
-  // Non destructif : on ne doit pas forcer "Conforme" sans passer par Airflow.
+  }  
   const docFinal = await Document.findByIdAndUpdate(
     idDocument,
     {
@@ -163,19 +171,14 @@ router.post('/:id/analyze', async (req, res) => {
       aiGenerated: false
     },
     { new: true }
-  );
-
-  // Best-effort : marquer le rawdocument en PENDING (au cas où)
+  );  
   try {
     await mongoose.connection.db.collection('rawdocuments').updateOne(
       { _id: new ObjectId(idDocument) },
       { $set: { processingStatus: 'PENDING' } }
     );
   } catch (_e) {
-    // ignore
-  }
-
-  // Best-effort : déclencher un run de dag_ingestion pour démarrer rapidement.
+  }  
   try {
     const airflowBaseUrl = process.env.AIRFLOW_BASE_URL || 'http://airflow-webserver:8080';
     const url = `${airflowBaseUrl}/api/v1/dags/dag_ingestion/dagRuns`;
@@ -189,7 +192,6 @@ router.post('/:id/analyze', async (req, res) => {
     }).catch(() => {});
     clearTimeout(timer);
   } catch (_e) {
-    // ignore
   }
 
   res.json(docFinal);

@@ -34,8 +34,6 @@ export default function ConformityView() {
       const docs = reponse.data || [];
       setListeDocs(docs);
 
-      // Fallback: si la zone Document est vide (ex: rebuild backend),
-      // on affiche les fournisseurs depuis la zone Curated.
       if (!docs || docs.length === 0) {
         try {
           const anomaliesRes = await fetchAnomaliesSuppliersSummary();
@@ -237,7 +235,6 @@ export default function ConformityView() {
                   <th style={{ width: '10%', ...thStyle }}>Type</th>
                   <th style={{ width: '10%', textAlign: 'center', ...thStyle }}>Date</th>
                   <th style={{ width: '12%', textAlign: 'center', ...thStyle }}>Statut</th>
-                  <th style={{ width: '15%', textAlign: 'right', ...thStyle }}>Données Extraites</th>
                   <th style={{ width: '15%', ...thStyle }}>Détails/Motif</th>
                   <th style={{ width: '6%', textAlign: 'center', ...thStyle }}>Aperçu</th>
                   <th style={{ width: '15%', textAlign: 'right', ...thStyle }}>Décision</th>
@@ -259,9 +256,6 @@ export default function ConformityView() {
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <span style={statusTag(doc.status)}>{doc.status}</span>
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        {doc.extractedData?.amountTTC ? `${doc.extractedData.amountTTC}€` : '—'}
                       </td>
                       <td style={tdStyle} title={details}>
                         {doc.reason ? doc.reason : doc.extractedData?.inconsistencyNote ? '⚠️ Incohérence' : '—'}

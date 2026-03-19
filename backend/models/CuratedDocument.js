@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 
-// Schéma du bloc "Curated zone" (données structurées + validation/anomalies)
-// Dupliqué côté backend pour que l'image Docker backend puisse le charger.
 const curatedDocumentSchema = new mongoose.Schema({
   cleanDocumentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -34,7 +32,7 @@ const curatedDocumentSchema = new mongoose.Schema({
     anomaliesDetected: [
       {
         anomalyCode: { type: String },
-        severity: { type: String }, // 'low' | 'medium' | 'high' | 'critical' (ou équivalent)
+        severity: { type: String },
         score: { type: Number },
         message: { type: String },
         details: { type: mongoose.Schema.Types.Mixed },

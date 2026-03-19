@@ -48,12 +48,62 @@ const CRMView = () => {
     if (valeurBrute === null || valeurBrute === undefined) return 0;
     if (typeof valeurBrute === 'number') return valeurBrute;
 
-    const texte = String(valeurBrute)
-      .replace(/[^\d,.\-]/g, '')
-      .replace(',', '.');
+    let texte = String(valeurBrute).trim();
+    if (!texte) return 0;
+    texte = texte.replace(/[^\d,.\-]/g, '');
+
+    if (texte.includes(',') && texte.includes('.')) {
+      texte = texte.replace(/,/g, '');
+    } else if (texte.includes(',')) {
+      texte = texte.replace(',', '.');
+    }
 
     const n = parseFloat(texte);
     return Number.isNaN(n) ? 0 : n;
+  };
+
+  const extraireMontantDocument = (doc) => {
+    const data = doc?.extractedData || {};
+    const candidats = [
+      data.amountHT,
+      data.amount_ht,
+      data.total_ht,
+      data.totalHT,
+      data.montantHT,
+      data.montant_ht,
+      data.ht,
+      data.amountTTC,
+      data.total_ttc,
+      data.amount_ttc,
+      data.totalTTC,
+      data.montantTTC,
+      data.montant_ttc,
+      data.ttc,
+      data.total,
+      data.amount,
+    ];
+
+    for (let i = 0; i < candidats.length; i++) {
+      const montant = normaliserMontant(candidats[i]);
+      if (montant !== 0) return montant;
+    }
+
+    return 0;
+  };
+
+  const statutEstValide = (status) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'conforme' || s === 'valid' || s === 'valide';
+  };
+
+  const statutEstWarning = (status) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'warning';
+  };
+
+  const documentEstFinancier = (doc) => {
+    const type = String(doc?.type || doc?.documentType || '').toLowerCase();
+    return type === 'invoice' || type === 'quote' || type === 'facture' || type === 'devis';
   };
 
   const creerListeFournisseurs = () => {
@@ -89,6 +139,7 @@ const CRMView = () => {
           siret: siret,
           name: nomFournisseur,
           totalAmount: 0,
+          curatedAmount: Number(anomaly?.amountTotal || 0),
           documents: [],
           anomalyCount: anomaly?.anomalyCount ?? 0,
           supplierStatus: anomaly?.status ?? 'UNKNOWN',
@@ -97,27 +148,41 @@ const CRMView = () => {
 
       dictionnaire[siret].documents.push(doc);
 
-      if (doc.status === 'Conforme') {
-        const montant = normaliserMontant(doc.extractedData?.amountTTC);
+      const inclureDansCumul =
+        statutEstValide(doc.status) ||
+        (statutEstWarning(doc.status) && documentEstFinancier(doc));
+
+      if (inclureDansCumul) {
+        const montant = extraireMontantDocument(doc);
         dictionnaire[siret].totalAmount = dictionnaire[siret].totalAmount + montant;
       }
     }
 
-    return Object.values(dictionnaire);
+    return Object.values(dictionnaire).map((supplier) => {
+      const totalAmount =
+        supplier.totalAmount === 0 && supplier.curatedAmount > 0
+          ? supplier.curatedAmount
+          : supplier.totalAmount;
+
+      const { curatedAmount, ...cleanSupplier } = supplier;
+      return {
+        ...cleanSupplier,
+        totalAmount,
+      };
+    });
   };
 
   const laListeComplete = creerListeFournisseurs();
   const fournisseursDepuisAnomalies = (anomaliesSuppliers || []).map((a) => ({
     siret: a.siret,
     name: a.companyName || 'Fournisseur',
-    totalAmount: 0,
+    totalAmount: Number(a.amountTotal || 0),
     documents: [],
     anomalyCount: a.anomalyCount ?? 0,
     supplierStatus: a.status ?? 'UNKNOWN',
     documentsCount: a.docCount ?? 0,
   }));
 
-  // Si la collection "Document" est vide (cas fréquent après rebuild), on affiche au moins les fournisseurs depuis "Curated".
   const fournisseursSource = laListeComplete.length > 0 ? laListeComplete : fournisseursDepuisAnomalies;
 
   const fournisseursFiltrés = fournisseursSource.filter((f) => {
@@ -298,7 +363,6 @@ const CRMView = () => {
                       const docKeys = ['quote', 'invoice', 'urssaf', 'kbis', 'rib'];
                       const keys = Object.keys(d);
 
-                      // Cas: mapping docType -> valeur (SIRET mismatch / COMPANY name mismatch)
                       const looksLikeDocTypeMapping = keys.length > 0 && keys.every((k) => docKeys.includes(k));
                       if (looksLikeDocTypeMapping) {
                         return (
