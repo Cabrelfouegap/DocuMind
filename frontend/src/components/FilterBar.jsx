@@ -13,7 +13,7 @@ const FilterBar = (props) => {
     setTexteRecherche(event.target.value);
   };
 
-  const tousLesStatus = ['Tous', 'En attente', 'Conforme', 'Non conforme'];
+  const tousLesStatus = ['Tous', 'En attente', 'Warning', 'Conforme', 'Non conforme'];
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -50,8 +50,11 @@ const FilterBar = (props) => {
               if (estSelectionne) classesBouton += 'bg-slate-800 text-white border-slate-800';
               else classesBouton += 'bg-white text-slate-600 hover:bg-slate-100';
             } else if (nomStatut === 'En attente') {
-              if (estSelectionne) classesBouton += 'bg-amber-500 text-white border-amber-500';
-              else classesBouton += 'bg-white text-amber-700 hover:bg-amber-50';
+              if (estSelectionne) classesBouton += 'bg-slate-600 text-white border-slate-600';
+              else classesBouton += 'bg-white text-slate-700 hover:bg-slate-100';
+            } else if (nomStatut === 'Warning') {
+              if (estSelectionne) classesBouton += 'bg-orange-500 text-white border-orange-500';
+              else classesBouton += 'bg-white text-orange-700 hover:bg-orange-50';
             } else if (nomStatut === 'Conforme') {
               if (estSelectionne) classesBouton += 'bg-emerald-600 text-white border-emerald-600';
               else classesBouton += 'bg-white text-emerald-700 hover:bg-emerald-50';
